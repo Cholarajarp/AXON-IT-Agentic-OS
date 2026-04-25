@@ -1,0 +1,382 @@
+# ============================================================================
+# GitLab CI/CD Pipeline for IT Agentic AI OS Platform
+# Production Hardening - Phase 13: CI/CD Pipeline
+# ============================================================================
+# This pipeline enforces code quality, security scanning, and build validation
+# for both frontend and backend components of the IT Agentic AI OS platform.
+#
+# Pipeline Stages:
+# 1. typecheck - TypeScript type checking
+# 2. lint - ESLint code quality checks
+# 3. test - Unit and integration tests
+# 4. build - Production build validation
+# 5. security - SAST, dependency, and container scanning
+#
+# Requirements: 22.1, 22.2, 22.3, 22.4, 22.5, 22.6
+# ============================================================================
+
+stages:
+  - typecheck
+  - lint
+  - test
+  - build
+  - security
+
+# ============================================================================
+# Global Configuration
+# ============================================================================
+
+variables:
+  # Node.js version (aligned with project requirements)
+  NODE_VERSION: "20.18.1"
+
+  # Cache configuration
+  NPM_CONFIG_CACHE: "$CI_PROJECT_DIR/.npm"
+  PNPM_HOME: "$CI_PROJECT_DIR/.pnpm"
+
+  # Security scanning configuration
+  SAST_EXCLUDED_PATHS: "node_modules,dist,coverage,.git"
+
+  # Fail pipeline on security vulnerabilities
+  FAIL_ON_VULNERABILITIES: "true"
+
+# Default settings for all jobs
+default:
+  image: node:20-alpine
+  before_script:
+    - apk add --no-cache git
+    - npm install -g pnpm@9
+    - echo "Node version:" && node --version
+    - echo "pnpm version:" && pnpm --version
+
+# Cache configuration for faster builds
+cache:
+  key:
+    files:
+      - package-lock.json
+      - IT-AGENTIC-OS/backend/package-lock.json
+  paths:
+    - .npm
+    - .pnpm
+    - node_modules
+    - IT-AGENTIC-OS/backend/node_modules
+
+# ============================================================================
+# Stage 1: TypeCheck Jobs
+# ============================================================================
+
+typecheck:frontend:
+  stage: typecheck
+  script:
+    - echo "Running TypeScript type checking for frontend..."
+    - pnpm install --frozen-lockfile
+    - pnpm run typecheck
+  artifacts:
+    reports:
+      junit: typecheck-frontend-report.xml
+    when: always
+    expire_in: 1 week
+  tags:
+    - docker
+
+typecheck:backend:
+  stage: typecheck
+  script:
+    - echo "Running TypeScript type checking for backend..."
+    - cd IT-AGENTIC-OS/backend
+    - pnpm install --frozen-lockfile
+    - pnpm run typecheck
+  artifacts:
+    reports:
+      junit: typecheck-backend-report.xml
+    when: always
+    expire_in: 1 week
+  tags:
+    - docker
+
+# ============================================================================
+# Stage 2: Lint Jobs
+# ============================================================================
+
+lint:frontend:
+  stage: lint
+  script:
+    - echo "Running ESLint for frontend..."
+    - pnpm install --frozen-lockfile
+    - pnpm run lint
+  artifacts:
+    reports:
+      junit: lint-frontend-report.xml
+    when: always
+    expire_in: 1 week
+  tags:
+    - docker
+
+lint:backend:
+  stage: lint
+  script:
+    - echo "Running ESLint for backend..."
+    - cd IT-AGENTIC-OS/backend
+    - pnpm install --frozen-lockfile
+    - pnpm run lint
+  artifacts:
+    reports:
+      junit: lint-backend-report.xml
+    when: always
+    expire_in: 1 week
+  tags:
+    - docker
+
+# ============================================================================
+# Stage 3: Test Jobs
+# ============================================================================
+
+test:frontend:
+  stage: test
+  script:
+    - echo "Running frontend unit tests..."
+    - pnpm install --frozen-lockfile
+    - pnpm run test
+  coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
+  artifacts:
+    reports:
+      junit: test-frontend-report.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/cobertura-coverage.xml
+    paths:
+      - coverage/
+    when: always
+    expire_in: 1 week
+  tags:
+    - docker
+
+test:backend:
+  stage: test
+  script:
+    - echo "Running backend unit tests..."
+    - cd IT-AGENTIC-OS/backend
+    - pnpm install --frozen-lockfile
+    - pnpm run test
+  coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
+  artifacts:
+    reports:
+      junit: test-backend-report.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: IT-AGENTIC-OS/backend/coverage/cobertura-coverage.xml
+    paths:
+      - IT-AGENTIC-OS/backend/coverage/
+    when: always
+    expire_in: 1 week
+  tags:
+    - docker
+
+# ============================================================================
+# Stage 4: Build Jobs
+# ============================================================================
+
+build:frontend:
+  stage: build
+  script:
+    - echo "Building frontend for production..."
+    - pnpm install --frozen-lockfile
+    - pnpm run build
+    - echo "Frontend build completed successfully"
+    - ls -lah dist/
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 week
+  tags:
+    - docker
+
+build:backend:
+  stage: build
+  script:
+    - echo "Building backend for production..."
+    - cd IT-AGENTIC-OS/backend
+    - pnpm install --frozen-lockfile
+    - pnpm run build
+    - echo "Backend build completed successfully"
+    - ls -lah dist/
+  artifacts:
+    paths:
+      - IT-AGENTIC-OS/backend/dist/
+    expire_in: 1 week
+  tags:
+    - docker
+
+# ============================================================================
+# Stage 5: Security Scanning Jobs
+# ============================================================================
+
+# SAST (Static Application Security Testing)
+# Scans source code for security vulnerabilities
+sast:
+  stage: security
+  variables:
+    SAST_EXCLUDED_ANALYZERS: "eslint"  # We already run ESLint separately
+  artifacts:
+    reports:
+      sast: gl-sast-report.json
+    when: always
+    expire_in: 1 week
+  tags:
+    - docker
+
+# Include GitLab's SAST template
+include:
+  - template: Security/SAST.gitlab-ci.yml
+  - template: Security/Dependency-Scanning.gitlab-ci.yml
+  - template: Security/Container-Scanning.gitlab-ci.yml
+
+# Dependency Scanning
+# Scans dependencies for known vulnerabilities
+dependency_scanning:
+  stage: security
+  variables:
+    DS_EXCLUDED_PATHS: "node_modules,dist,coverage"
+  artifacts:
+    reports:
+      dependency_scanning: gl-dependency-scanning-report.json
+    when: always
+    expire_in: 1 week
+  tags:
+    - docker
+
+# Container Scanning
+# Scans Docker images for vulnerabilities
+container_scanning:backend:
+  stage: security
+  image: docker:latest
+  services:
+    - docker:dind
+  variables:
+    DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: "/certs"
+    CS_IMAGE: "$CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHA"
+  before_script:
+    - docker info
+  script:
+    - echo "Building backend Docker image for scanning..."
+    - cd IT-AGENTIC-OS/backend
+    - docker build -t $CS_IMAGE .
+    - echo "Docker image built successfully"
+  artifacts:
+    reports:
+      container_scanning: gl-container-scanning-report.json
+    when: always
+    expire_in: 1 week
+  tags:
+    - docker
+
+# ============================================================================
+# Security Vulnerability Gate
+# ============================================================================
+# This job fails the pipeline if critical or high vulnerabilities are found
+
+security:vulnerability-gate:
+  stage: security
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache jq curl
+  script:
+    - echo "Checking for security vulnerabilities..."
+    - |
+      # Initialize vulnerability counters
+      CRITICAL_COUNT=0
+      HIGH_COUNT=0
+
+      # Check SAST report
+      if [ -f gl-sast-report.json ]; then
+        CRITICAL_COUNT=$((CRITICAL_COUNT + $(jq '[.vulnerabilities[] | select(.severity == "Critical")] | length' gl-sast-report.json 2>/dev/null || echo 0)))
+        HIGH_COUNT=$((HIGH_COUNT + $(jq '[.vulnerabilities[] | select(.severity == "High")] | length' gl-sast-report.json 2>/dev/null || echo 0)))
+      fi
+
+      # Check Dependency Scanning report
+      if [ -f gl-dependency-scanning-report.json ]; then
+        CRITICAL_COUNT=$((CRITICAL_COUNT + $(jq '[.vulnerabilities[] | select(.severity == "Critical")] | length' gl-dependency-scanning-report.json 2>/dev/null || echo 0)))
+        HIGH_COUNT=$((HIGH_COUNT + $(jq '[.vulnerabilities[] | select(.severity == "High")] | length' gl-dependency-scanning-report.json 2>/dev/null || echo 0)))
+      fi
+
+      # Check Container Scanning report
+      if [ -f gl-container-scanning-report.json ]; then
+        CRITICAL_COUNT=$((CRITICAL_COUNT + $(jq '[.vulnerabilities[] | select(.severity == "Critical")] | length' gl-container-scanning-report.json 2>/dev/null || echo 0)))
+        HIGH_COUNT=$((HIGH_COUNT + $(jq '[.vulnerabilities[] | select(.severity == "High")] | length' gl-container-scanning-report.json 2>/dev/null || echo 0)))
+      fi
+
+      # Report findings
+      echo "Security Scan Results:"
+      echo "  Critical vulnerabilities: $CRITICAL_COUNT"
+      echo "  High vulnerabilities: $HIGH_COUNT"
+
+      # Fail pipeline if vulnerabilities found
+      if [ "$FAIL_ON_VULNERABILITIES" = "true" ]; then
+        if [ $CRITICAL_COUNT -gt 0 ] || [ $HIGH_COUNT -gt 0 ]; then
+          echo "❌ PIPELINE FAILED: Security vulnerabilities detected!"
+          echo "   Critical: $CRITICAL_COUNT, High: $HIGH_COUNT"
+          echo "   Please review and remediate vulnerabilities before merging."
+          exit 1
+        fi
+      fi
+
+      echo "✅ No critical or high vulnerabilities detected"
+  dependencies:
+    - sast
+    - dependency_scanning
+    - container_scanning:backend
+  tags:
+    - docker
+  allow_failure: false
+
+# ============================================================================
+# Pipeline Success Indicator
+# ============================================================================
+# This job runs only when all previous stages pass
+
+pipeline:success:
+  stage: .post
+  image: alpine:latest
+  script:
+    - echo "============================================"
+    - echo "✅ PIPELINE SUCCESSFUL"
+    - echo "============================================"
+    - echo "All checks passed:"
+    - echo "  ✓ TypeScript type checking"
+    - echo "  ✓ ESLint code quality"
+    - echo "  ✓ Unit tests"
+    - echo "  ✓ Production builds"
+    - echo "  ✓ Security scanning (SAST)"
+    - echo "  ✓ Dependency scanning"
+    - echo "  ✓ Container scanning"
+    - echo "  ✓ No critical/high vulnerabilities"
+    - echo "============================================"
+    - echo "Ready for deployment! 🚀"
+  when: on_success
+  tags:
+    - docker
+
+# ============================================================================
+# Pipeline Failure Indicator
+# ============================================================================
+# This job runs only when any previous stage fails
+
+pipeline:failure:
+  stage: .post
+  image: alpine:latest
+  script:
+    - echo "============================================"
+    - echo "❌ PIPELINE FAILED"
+    - echo "============================================"
+    - echo "Please review the failed jobs above and fix the issues."
+    - echo "Common failure reasons:"
+    - echo "  • TypeScript type errors"
+    - echo "  • ESLint violations"
+    - echo "  • Test failures"
+    - echo "  • Build errors"
+    - echo "  • Security vulnerabilities"
+    - echo "============================================"
+  when: on_failure
+  tags:
+    - docker

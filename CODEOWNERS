@@ -1,0 +1,25 @@
+# CODEOWNERS for AXON IT Agentic OS
+# Primary owner: Cholaraja R P <ccholarajarp@gmail.com>
+
+* ccholarajarp@gmail.com
+
+/src/ ccholarajarp@gmail.com
+/backend/ ccholarajarp@gmail.com
+/electron/ ccholarajarp@gmail.com
+/scripts/ ccholarajarp@gmail.com
+/tests/ ccholarajarp@gmail.com
+
+/.github/ ccholarajarp@gmail.com
+/.gitlab-ci.yml ccholarajarp@gmail.com
+/docker-compose.yml ccholarajarp@gmail.com
+/package.json ccholarajarp@gmail.com
+/package-lock.json ccholarajarp@gmail.com
+/backend/package.json ccholarajarp@gmail.com
+/backend/package-lock.json ccholarajarp@gmail.com
+
+/README.md ccholarajarp@gmail.com
+/CONTRIBUTING.md ccholarajarp@gmail.com
+/CODEOWNERS ccholarajarp@gmail.com
+/LICENSE ccholarajarp@gmail.com
+/.env.example ccholarajarp@gmail.com
+/backend/.env.example ccholarajarp@gmail.com

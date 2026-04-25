@@ -1,0 +1,68 @@
+import type { ServiceCatalogTemplate } from './types.js';
+
+export const SERVICE_CATALOG: ServiceCatalogTemplate[] = [
+  {
+    id: 'saas-mvp',
+    name: 'Build a SaaS MVP',
+    category: 'application-build',
+    description: 'Generate a production-ready SaaS product with frontend, API, database, auth, tests, CI, and deployment runbook.',
+    idealFor: ['founders', 'internal product teams', 'new revenue experiments'],
+    deliverables: ['PRD', 'architecture', 'React UI', 'Fastify API', 'PostgreSQL schema', 'tests', 'CI/CD', 'delivery report'],
+    acceptanceCriteria: [
+      'Users can complete the primary workflow end to end',
+      'Core APIs are documented and covered by integration tests',
+      'Deployment runbook, environment variables, and rollback path are documented',
+    ],
+    basePriceUsd: 12000,
+    baseTimelineDays: 21,
+    defaultRisk: 'medium',
+  },
+  {
+    id: 'repo-modernization',
+    name: 'Fix and Modernize a Repository',
+    category: 'repo-modernization',
+    description: 'Analyze a legacy codebase, repair broken builds, update dependencies, add tests, and produce a modernization roadmap.',
+    idealFor: ['engineering managers', 'platform teams', 'maintenance teams'],
+    deliverables: ['repo assessment', 'dependency upgrade plan', 'build fixes', 'test coverage', 'risk register', 'PR bundle'],
+    acceptanceCriteria: [
+      'Install, typecheck, tests, and production build pass from documented commands',
+      'Dependency and security findings are reduced or explicitly accepted',
+      'Modernization changes are grouped into reviewable PR-sized units',
+    ],
+    basePriceUsd: 7500,
+    baseTimelineDays: 14,
+    defaultRisk: 'medium',
+  },
+  {
+    id: 'internal-tool-deploy',
+    name: 'Deploy and Operate an Internal Tool',
+    category: 'deployment-ops',
+    description: 'Package, deploy, observe, and support an internal app with SLOs, alerting, backups, and incident runbooks.',
+    idealFor: ['IT teams', 'operations teams', 'regulated back offices'],
+    deliverables: ['Docker assets', 'Kubernetes manifests', 'CI/CD', 'SLOs', 'alerts', 'dashboards', 'runbooks'],
+    acceptanceCriteria: [
+      'Service has health, readiness, and rollback procedures',
+      'Operational dashboard and alert thresholds are defined',
+      'Smoke tests verify the deployed endpoint before handoff',
+    ],
+    basePriceUsd: 9000,
+    baseTimelineDays: 10,
+    defaultRisk: 'high',
+  },
+  {
+    id: 'workflow-automation',
+    name: 'Automate an IT Workflow',
+    category: 'automation',
+    description: 'Turn a repeated manual business or IT process into a governed workflow with connectors, approvals, and audit evidence.',
+    idealFor: ['support teams', 'RevOps', 'IT service desks', 'finance operations'],
+    deliverables: ['workflow design', 'connector mapping', 'approval gates', 'automation service', 'audit report'],
+    acceptanceCriteria: [
+      'Workflow preserves required human approvals',
+      'Every connector write is scoped and audited',
+      'Manual effort and expected error rate reduction are estimated',
+    ],
+    basePriceUsd: 6500,
+    baseTimelineDays: 9,
+    defaultRisk: 'medium',
+  },
+];
