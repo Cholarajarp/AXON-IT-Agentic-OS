@@ -151,7 +151,7 @@ flowchart TB
   Routes --> Surfaces[Feature surfaces]
   Surfaces --> QueryHooks[Typed query hooks]
   QueryHooks --> FetchAPI[fetchAPI wrapper]
-  FetchAPI --> Backend[/api/v1]
+  FetchAPI --> Backend["/api/v1 backend"]
   App --> Toasts[Toast provider]
   App --> Theme[Theme provider]
   App --> CommandPalette[Command palette]
