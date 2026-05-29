@@ -1,6 +1,7 @@
 export type BrowserQaStatus = 'release-ready' | 'needs-review' | 'blocked';
 export type BrowserJourneyStatus = 'pass' | 'warn' | 'fail' | 'skipped';
 export type BrowserDeviceProfile = 'desktop' | 'tablet' | 'mobile';
+export type BrowserQaEvidenceMode = 'live-url' | 'html-snapshot' | 'generated-fallback';
 export type ValidationEvidenceKind = 'typecheck' | 'unit' | 'integration' | 'build' | 'e2e' | 'security' | 'accessibility';
 export type ValidationEvidenceStatus = 'pass' | 'warn' | 'fail' | 'planned';
 
@@ -79,6 +80,7 @@ export interface BrowserQaReport {
   name: string;
   releaseGoal: string;
   targetUrl?: string;
+  evidenceMode: BrowserQaEvidenceMode;
   status: BrowserQaStatus;
   score: number;
   summary: string;

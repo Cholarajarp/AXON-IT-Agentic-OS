@@ -1,7 +1,7 @@
 import type { AgentExecutionInput } from '../types.js';
-import { SimulatedAgent } from './base.js';
+import { DeterministicAgent } from './base.js';
 
-export class DomainAgent extends SimulatedAgent {
+export class DomainAgent extends DeterministicAgent {
   name = 'DomainAgent';
   description = 'Creates domain models, entity designs, and relationship mappings';
   version = '1.0.0';
@@ -24,6 +24,6 @@ export class DomainAgent extends SimulatedAgent {
     };
   }
 
-  protected getSimulatedDurationMs() { return 1500 + Math.random() * 500; }
-  protected getSimulatedCost() { return 0.005 + Math.random() * 0.002; }
+  protected estimateDurationMs() { return 1750; }
+  protected estimateCost() { return 0.006; }
 }

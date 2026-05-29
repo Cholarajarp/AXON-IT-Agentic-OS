@@ -3,6 +3,7 @@ export type MissionPhaseStatus = 'pass' | 'warn' | 'block';
 
 export interface MissionControlInput {
   tenantId?: string;
+  blueprintId?: string;
   customerName?: string;
   mission: string;
   previewUrl?: string;

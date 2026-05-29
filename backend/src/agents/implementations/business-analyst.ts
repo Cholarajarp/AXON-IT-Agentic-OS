@@ -1,7 +1,7 @@
 import type { AgentExecutionInput } from '../types.js';
-import { SimulatedAgent } from './base.js';
+import { DeterministicAgent } from './base.js';
 
-export class BusinessAnalystAgent extends SimulatedAgent {
+export class BusinessAnalystAgent extends DeterministicAgent {
   name = 'BusinessAnalystAgent';
   description = 'Analyzes business requirements, defines acceptance criteria, maps stakeholders';
   version = '1.0.0';
@@ -26,6 +26,6 @@ export class BusinessAnalystAgent extends SimulatedAgent {
     };
   }
 
-  protected getSimulatedDurationMs() { return 1200 + Math.random() * 600; }
-  protected getSimulatedCost() { return 0.004 + Math.random() * 0.002; }
+  protected estimateDurationMs() { return 1500; }
+  protected estimateCost() { return 0.005; }
 }

@@ -330,7 +330,7 @@ export function Blueprint() {
         </div>
       </Card>
 
-      <Card className="relative overflow-hidden border border-s-border/80 bg-gradient-to-br from-s-surface via-s-base to-s-surface">
+      <Card className="relative overflow-hidden border border-s-border/80 bg-s-surface">
         <div className="relative grid grid-cols-1 xl:grid-cols-[1.15fr_0.85fr] gap-5 p-5">
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2">

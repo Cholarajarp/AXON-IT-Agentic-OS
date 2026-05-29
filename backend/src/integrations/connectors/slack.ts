@@ -1,28 +1,35 @@
-import { nanoid } from 'nanoid';
 import type { IntegrationConfig, IntegrationConnector, ITSMTicket } from '../types.js';
+import { TicketMemory } from './ticket-store.js';
 
 export class SlackConnector implements IntegrationConnector {
   type = 'slack' as const;
   name = 'Slack';
   private connected = false;
+  private readonly store = new TicketMemory(this.type);
 
   async connect(_config: IntegrationConfig): Promise<boolean> { this.connected = true; return true; }
   async disconnect() { this.connected = false; }
   async healthCheck(): Promise<boolean> { return this.connected; }
 
   async createTicket(ticket: Partial<ITSMTicket>): Promise<ITSMTicket> {
-    return { id: nanoid(12), externalId: `slack-${nanoid(6)}`, type: ticket.type || 'service_request', title: ticket.title || '', description: ticket.description || '', priority: ticket.priority || 'P3', status: 'Notified', source: 'slack' as any, createdAt: Date.now(), updatedAt: Date.now() };
+    return this.store.create(ticket, {
+      externalId: this.store.nextExternalId('SLACK-', 1000),
+      type: ticket.type || 'service_request',
+      title: ticket.title || 'Slack Thread',
+      priority: ticket.priority || 'P3',
+      status: 'Notified',
+    });
   }
 
   async updateTicket(id: string, updates: Partial<ITSMTicket>): Promise<ITSMTicket> {
-    return { id, externalId: id, type: 'service_request', title: updates.title || '', description: '', priority: 'P3', status: 'Updated', source: 'slack' as any, createdAt: Date.now(), updatedAt: Date.now() };
+    return this.store.update(id, updates, { externalId: id, type: 'service_request', title: updates.title || 'Slack Thread', priority: 'P3', status: updates.status || 'Updated' });
   }
 
   async getTicket(id: string): Promise<ITSMTicket | null> {
-    return { id, externalId: id, type: 'service_request', title: 'Slack Thread', description: '', priority: 'P3', status: 'Open', source: 'slack' as any, createdAt: Date.now(), updatedAt: Date.now() };
+    return this.store.get(id);
   }
 
-  async listTickets(): Promise<ITSMTicket[]> { return []; }
+  async listTickets(): Promise<ITSMTicket[]> { return this.store.list(); }
 
   async sendNotification(message: string, channel = '#axon-alerts'): Promise<boolean> {
     console.log(`[Slack → ${channel}] ${message}`);

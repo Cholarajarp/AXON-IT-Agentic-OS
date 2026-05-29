@@ -268,7 +268,7 @@ function buildGates(
       passed: input.hasCustomerReport ?? environment !== 'production',
       warnOnly: environment !== 'production',
       ownerAgent: 'CustomerSuccessAgent',
-      whyItMatters: 'A real IT company ships explanation, risks, evidence, and next steps with the product.',
+      whyItMatters: 'A real IT service software delivery team ships explanation, risks, evidence, and next steps with the product.',
       evidenceRequired: ['customer report', 'known risks', 'next recommendations'],
       evidence,
       nextAction: 'Generate Customer Delivery report before handoff.',

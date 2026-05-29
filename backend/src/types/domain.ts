@@ -140,6 +140,7 @@ export interface ExecutiveMetrics {
   autoResolved: number;
   weeklyVelocity: WeeklyVelocity[];
   risks: Risk[];
+  insight: ExecutiveInsight;
 }
 
 export interface WeeklyVelocity {
@@ -154,6 +155,14 @@ export interface Risk {
   severity: 'HIGH' | 'MEDIUM' | 'LOW' | 'CRITICAL';
   owner: string;
   status: string;
+}
+
+export interface ExecutiveInsight {
+  headline: string;
+  summary: string;
+  wins: string[];
+  attention: string[];
+  signals: Array<{ label: string; value: string; tone: 'success' | 'warning' | 'critical' | 'neutral' }>;
 }
 
 export interface MemoryRecord {

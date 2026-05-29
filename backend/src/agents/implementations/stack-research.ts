@@ -1,7 +1,7 @@
 import type { AgentExecutionInput } from '../types.js';
-import { SimulatedAgent } from './base.js';
+import { DeterministicAgent } from './base.js';
 
-export class StackResearchAgent extends SimulatedAgent {
+export class StackResearchAgent extends DeterministicAgent {
   name = 'StackResearchAgent';
   description = 'Researches reference stacks, platform patterns, and architecture standards from public sources';
   version = '1.0.0';
@@ -50,6 +50,6 @@ export class StackResearchAgent extends SimulatedAgent {
     };
   }
 
-  protected getSimulatedDurationMs() { return 1800 + Math.random() * 800; }
-  protected getSimulatedCost() { return 0.006 + Math.random() * 0.003; }
+  protected estimateDurationMs() { return 2200; }
+  protected estimateCost() { return 0.0075; }
 }

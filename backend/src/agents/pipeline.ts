@@ -168,7 +168,7 @@ export async function executeWithRuntimeEnforcement(input: PipelineInput): Promi
   // Step 3: rbac-check (agents execute under the 'agent' role by default)
   if (!aborted) {
     const s = Date.now();
-    const synthetic = {
+    const agentActor = {
       id: `agent:${input.agentName}`,
       email: `${input.agentName}@axon.local`,
       name: input.agentName,
@@ -177,7 +177,7 @@ export async function executeWithRuntimeEnforcement(input: PipelineInput): Promi
       permissions: [],
       active: true,
     };
-    const ok = rbacService.canAccess(synthetic, 'workflows', 'update');
+    const ok = rbacService.canAccess(agentActor, 'workflows', 'update');
     recordStep('rbac-check', 3, ok, s, ok ? undefined : `Agent role lacks workflows:update permission`);
   }
 

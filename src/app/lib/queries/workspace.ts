@@ -4,13 +4,21 @@ import { defaultQueryOptions } from '../query-options';
 import { queryKeys } from '../query-keys';
 import type {
   AgentInstance,
+  AgentPipelineProbeInput,
+  AgentPipelineProbeResult,
   Alert,
   Approval,
   AuditEntryRecord,
   AuditVerificationResult,
+  CostBudgetPolicy,
+  CostExportPackage,
+  CostLedgerEntry,
+  CostLedgerInput,
   CostSummary,
   DAGResponse,
   Evidence,
+  EvidenceExportPackage,
+  EvidenceInput,
   ExecutiveMetrics,
   Incident,
   IntegrationConfigInput,
@@ -18,12 +26,16 @@ import type {
   MemoryRecord,
   ModelCatalogResponse,
   ModelEvaluationReport,
+  ModelEvaluationRunResponse,
   ModelRuntimeStatus,
   OrchestratorStatus,
   PipelineStep,
   PlatformHealth,
   Policy,
   PolicyDecisionRecord,
+  PolicyInput,
+  PolicySimulationInput,
+  PolicySimulationResult,
   ProviderConfigInput,
   ProviderRuntimeHealth,
   PublicProviderConfig,
@@ -118,6 +130,21 @@ export function useModelEvaluationReport(options?: Partial<UseQueryOptions<Model
     queryFn: () => fetchAPI<ModelEvaluationReport>('/models/evaluations'),
     ...defaultQueryOptions,
     ...options,
+  });
+}
+
+export function useRunModelEvaluation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { includeAdversarial?: boolean; tenantId?: string } = {}) =>
+      fetchAPI<ModelEvaluationRunResponse>('/models/evaluations/run', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.modelEvaluations });
+      queryClient.invalidateQueries({ queryKey: queryKeys.modelRuntimeStatus });
+    },
   });
 }
 
@@ -322,6 +349,45 @@ export function usePolicy(id: string, options?: Partial<UseQueryOptions<Policy>>
   });
 }
 
+export function useCreatePolicy() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: PolicyInput) =>
+      fetchAPI<Policy>('/policies', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.policies });
+    },
+  });
+}
+
+export function useUpdatePolicyStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: Policy['status'] }) =>
+      fetchAPI<Policy>(`/policies/${encodeURIComponent(id)}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      }),
+    onSuccess: (_policy, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.policies });
+      queryClient.invalidateQueries({ queryKey: queryKeys.policy(variables.id) });
+    },
+  });
+}
+
+export function useSimulatePolicy() {
+  return useMutation({
+    mutationFn: (input: PolicySimulationInput) =>
+      fetchAPI<PolicySimulationResult>('/policies/simulate', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }),
+  });
+}
+
 // Memory
 
 export function useMemory(query: string, options?: Partial<UseQueryOptions<MemoryRecord[]>>) {
@@ -451,6 +517,44 @@ export function useCost(options?: Partial<UseQueryOptions<CostSummary>>) {
   });
 }
 
+export function useRecordCost() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CostLedgerInput) =>
+      fetchAPI<{ record: CostLedgerEntry; summary: CostSummary }>('/cost/ledger', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.cost });
+      queryClient.invalidateQueries({ queryKey: queryKeys.audit });
+    },
+  });
+}
+
+export function useUpdateCostBudgetPolicy() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Pick<CostBudgetPolicy, 'monthlyBudgetUsd' | 'warningThresholdPct' | 'hardStopThresholdPct'>) =>
+      fetchAPI<CostBudgetPolicy>('/cost/budget-policy', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.cost });
+    },
+  });
+}
+
+export function useExportCost() {
+  return useMutation({
+    mutationFn: () =>
+      fetchAPI<CostExportPackage>('/cost/export', {
+        method: 'POST',
+      }),
+  });
+}
+
 // Incidents
 
 export function useIncidents(options?: Partial<UseQueryOptions<Incident[]>>) {
@@ -482,6 +586,30 @@ export function useEvidence(options?: Partial<UseQueryOptions<Evidence[]>>) {
     queryFn: () => fetchAPI<Evidence[]>('/evidence'),
     ...defaultQueryOptions,
     ...options,
+  });
+}
+
+export function useCreateEvidence() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: EvidenceInput) =>
+      fetchAPI<Evidence>('/evidence', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.evidence });
+      queryClient.invalidateQueries({ queryKey: queryKeys.audit });
+    },
+  });
+}
+
+export function useExportEvidence() {
+  return useMutation({
+    mutationFn: () =>
+      fetchAPI<EvidenceExportPackage>('/evidence/export', {
+        method: 'POST',
+      }),
   });
 }
 
@@ -584,6 +712,21 @@ export function useToolPipeline(options?: Partial<UseQueryOptions<{ steps: Pipel
     queryFn: () => fetchAPI<{ steps: PipelineStep[]; total: number }>('/tools/pipeline'),
     staleTime: 5 * 60 * 1000,
     ...options,
+  });
+}
+
+export function useRunAgentPipelineProbe() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: AgentPipelineProbeInput = {}) =>
+      fetchAPI<AgentPipelineProbeResult>('/agents/pipeline/probe', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.agentPipeline });
+      queryClient.invalidateQueries({ queryKey: queryKeys.audit });
+    },
   });
 }
 

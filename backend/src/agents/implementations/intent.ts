@@ -1,7 +1,7 @@
 import type { AgentExecutionInput } from '../types.js';
-import { SimulatedAgent } from './base.js';
+import { DeterministicAgent } from './base.js';
 
-export class IntentAgent extends SimulatedAgent {
+export class IntentAgent extends DeterministicAgent {
   name = 'IntentAgent';
   description = 'Parses user intent, classifies goal type, extracts structured requirements';
   version = '1.0.0';
@@ -18,8 +18,8 @@ export class IntentAgent extends SimulatedAgent {
     };
   }
 
-  protected getSimulatedDurationMs() { return 800 + Math.random() * 400; }
-  protected getSimulatedCost() { return 0.002 + Math.random() * 0.001; }
+  protected estimateDurationMs() { return 1000; }
+  protected estimateCost() { return 0.0025; }
 
   private classifyGoal(goal: string): string {
     const lower = goal.toLowerCase();

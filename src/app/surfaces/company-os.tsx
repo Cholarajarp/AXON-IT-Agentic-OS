@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Button, Card, CardHeader, EmptyState, Kpi, PageHeader, SeverityBadge } from '../components/ui/primitives';
 import {
+  useActivateCompanyOsMission,
   useCompanyOsMissions,
   useCreateCompanyOsMission,
   type CompanyMissionMode,
@@ -31,6 +32,7 @@ function parseList(value: string) {
 export function CompanyOs() {
   const missions = useCompanyOsMissions();
   const createMission = useCreateCompanyOsMission();
+  const activateMission = useActivateCompanyOsMission();
   const { setRoute } = useRouting();
   const [companyName, setCompanyName] = useState('');
   const [mission, setMission] = useState('');
@@ -41,34 +43,65 @@ export function CompanyOs() {
   const [cloudProviders, setCloudProviders] = useState('');
   const [compliance, setCompliance] = useState('');
   const [selected, setSelected] = useState<CompanyOperatingMission | null>(null);
+  const [notice, setNotice] = useState('');
+  const [error, setError] = useState('');
 
   const list = missions.data?.missions ?? [];
   const current = selected ?? list[0] ?? null;
 
   const create = async () => {
-    const generated = await createMission.mutateAsync({
-      companyName,
-      mission,
-      mode,
-      targetAgentCount,
-      monthlyBudgetUsd,
-      regulated,
-      cloudProviders: parseList(cloudProviders),
-      compliance: parseList(compliance),
-      customerSegments: ['enterprise founders', 'engineering leaders', 'IT operations teams'],
-    });
-    setSelected(generated);
+    setError('');
+    setNotice('');
+    try {
+      const generated = await createMission.mutateAsync({
+        companyName,
+        mission,
+        mode,
+        targetAgentCount,
+        monthlyBudgetUsd,
+        regulated,
+        cloudProviders: parseList(cloudProviders),
+        compliance: parseList(compliance),
+        customerSegments: ['enterprise founders', 'engineering leaders', 'IT operations teams'],
+      });
+      setSelected(generated);
+      setNotice(`Company OS ${generated.id} built with ${generated.enterpriseScore.overall}% enterprise score.`);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Unable to build Company OS.');
+    }
+  };
+
+  const activate = async () => {
+    if (!current) return;
+    setError('');
+    setNotice('');
+    try {
+      const activated = await activateMission.mutateAsync(current.id);
+      setSelected(activated.mission);
+      setNotice(`Mission Control ${activated.mission.axonIntegration.missionControlRunId} activated at ${activated.mission.axonIntegration.score}%.`);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Unable to activate AXON runtime.');
+    }
   };
 
   return (
     <div className="space-y-5">
       <PageHeader
         title="Company OS"
-        description="One integrated operating mission to beat a 200k-person IT company: portfolio, workforce, skills, services, delivery, operations, cost, faults, and trust"
+        description="One integrated operating mission for building and running enterprise IT service software: portfolio, workforce, skills, delivery, operations, cost, faults, and trust"
         action={
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="sm" icon={<Network size={13} />} onClick={() => setRoute('autonomousWorkforce')}>
               Workforce
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={activateMission.isPending ? <Loader2 size={13} className="animate-spin" /> : <ShieldCheck size={13} />}
+              onClick={activate}
+              disabled={!current || activateMission.isPending}
+            >
+              {activateMission.isPending ? 'Activating' : 'Activate AXON'}
             </Button>
             <Button
               variant="primary"
@@ -77,31 +110,37 @@ export function CompanyOs() {
               onClick={create}
               disabled={createMission.isPending || mission.trim().length < 12}
             >
-              {createMission.isPending ? 'Building company' : 'Build company OS'}
+              {createMission.isPending ? 'Building service OS' : 'Build service OS'}
             </Button>
           </div>
         }
       />
 
+      {(notice || error) && (
+        <div className={`rounded-md border px-3 py-2 text-[12.5px] ${error ? 'border-s-danger/30 bg-s-danger/10 text-s-danger' : 'border-s-success/30 bg-s-success/10 text-s-success'}`}>
+          {error || notice}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Kpi label="Agents" value={current ? current.controlPlane.targetAgentCount.toLocaleString() : targetAgentCount.toLocaleString()} hint="Company-scale workforce" />
-        <Kpi label="Service lines" value={String(current?.serviceLines.length ?? 0)} hint="Revenue engines" />
-        <Kpi label="Gross margin" value={current ? `${current.economics.grossMarginPercent}%` : '--'} hint="Estimated operating margin" />
-        <Kpi label="Tickets seeded" value={String(current?.initialTickets.length ?? 0)} hint="First execution gates" />
+        <Kpi label="Enterprise score" value={current ? `${current.enterpriseScore.overall}%` : '--'} hint={current?.axonIntegration.status ?? 'not built'} />
+        <Kpi label="AXON surfaces" value={String(current?.axonIntegration.connectedSurfaces.length ?? 0)} hint="Connected runtime" />
+        <Kpi label="Value streams" value={String(current?.valueStreams.length ?? 0)} hint="Work loops" />
+        <Kpi label="Integrations" value={String(current?.integrationFabric.length ?? 0)} hint="Connector fabric" />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[420px_minmax(0,1fr)] gap-4">
         <Card className="overflow-hidden">
-          <CardHeader title="Build the IT company" subtitle="Generate the integrated mission, not separate proof points" action={<Building2 size={14} className="text-s-brand" />} />
+          <CardHeader title="Build IT service software OS" subtitle="Generate the integrated service-software mission, not separate proof points" action={<Building2 size={14} className="text-s-brand" />} />
           <div className="p-4 space-y-4">
-            <Field label="Company name" value={companyName} onChange={setCompanyName} placeholder="Your company or product studio" />
+            <Field label="Organization / customer" value={companyName} onChange={setCompanyName} placeholder="Your organization or customer account" />
             <label className="block">
               <span className="label-mono mb-1.5 block">Mission</span>
               <textarea
                 value={mission}
                 onChange={(event) => setMission(event.target.value)}
                 rows={6}
-                placeholder="Describe the real IT operating mission, customer segment, services, compliance needs, and growth target."
+                placeholder="Describe the enterprise IT service software to build, users served, workflows, compliance needs, and growth target."
                 className="w-full resize-none rounded-md border border-s-border bg-s-base px-3 py-2 text-[13px] leading-relaxed text-s-primary outline-none placeholder:text-s-muted focus:border-s-brand"
               />
             </label>
@@ -134,7 +173,7 @@ export function CompanyOs() {
               disabled={createMission.isPending || mission.trim().length < 12}
               className="w-full justify-center"
             >
-              {createMission.isPending ? 'Composing operating company' : 'Generate full IT company'}
+              {createMission.isPending ? 'Composing service OS' : 'Generate service software OS'}
             </Button>
           </div>
         </Card>
@@ -142,7 +181,7 @@ export function CompanyOs() {
         <MissionList missions={list} selectedId={current?.id} isLoading={missions.isLoading} onSelect={setSelected} onRefresh={() => missions.refetch()} />
       </div>
 
-      <MissionDetail mission={current} />
+      <MissionDetail mission={current} onOpenBuildStudio={() => setRoute('build')} onOpenMissionControl={() => setRoute('missionControl')} />
     </div>
   );
 }
@@ -168,9 +207,9 @@ function NumberField({ label, value, onChange }: { label: string; value: number;
 function MissionList({ missions, selectedId, isLoading, onSelect, onRefresh }: { missions: CompanyOperatingMission[]; selectedId?: string; isLoading: boolean; onSelect: (mission: CompanyOperatingMission) => void; onRefresh: () => void }) {
   return (
     <Card className="overflow-hidden">
-      <CardHeader title="Company missions" subtitle={`${missions.length} operating compan${missions.length === 1 ? 'y' : 'ies'}`} action={<Button size="sm" variant="ghost" icon={<RefreshCw size={12} />} onClick={onRefresh}>Refresh</Button>} />
+      <CardHeader title="Service software missions" subtitle={`${missions.length} operating mission${missions.length === 1 ? '' : 's'}`} action={<Button size="sm" variant="ghost" icon={<RefreshCw size={12} />} onClick={onRefresh}>Refresh</Button>} />
       {isLoading ? (
-        <EmptyState icon={<Loader2 size={18} className="animate-spin" />} title="Loading company missions" />
+        <EmptyState icon={<Loader2 size={18} className="animate-spin" />} title="Loading service software missions" />
       ) : missions.length === 0 ? (
         <EmptyState icon={<Building2 size={18} />} title="No Company OS mission yet" description="Generate the integrated operating mission to connect workforce, skills, service lines, delivery, operations, cost, and customer trust." />
       ) : (
@@ -196,11 +235,11 @@ function MissionList({ missions, selectedId, isLoading, onSelect, onRefresh }: {
   );
 }
 
-function MissionDetail({ mission }: { mission: CompanyOperatingMission | null }) {
+function MissionDetail({ mission, onOpenBuildStudio, onOpenMissionControl }: { mission: CompanyOperatingMission | null; onOpenBuildStudio: () => void; onOpenMissionControl: () => void }) {
   if (!mission) {
     return (
       <Card>
-        <EmptyState icon={<Building2 size={18} />} title="No integrated company selected" description="Build a Company OS mission to see the complete IT-company operating system." />
+        <EmptyState icon={<Building2 size={18} />} title="No service software mission selected" description="Build a Company OS mission to see the complete IT-service software operating system." />
       </Card>
     );
   }
@@ -217,10 +256,24 @@ function MissionDetail({ mission }: { mission: CompanyOperatingMission | null })
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <Mini label="Enterprise" value={`${mission.enterpriseScore.overall}%`} />
+            <Mini label="AXON" value={mission.axonIntegration.status} />
             <Mini label="Run cost" value={`$${Math.round(mission.economics.estimatedRunUsd / 1000)}k`} />
-            <Mini label="Revenue cap" value={`$${Math.round(mission.economics.revenueCapacityUsd / 1000)}k`} />
-            <Mini label="Cost/outcome" value={`$${mission.economics.costPerOutcomeUsd}`} />
             <Mini label="Margin" value={`${mission.economics.grossMarginPercent}%`} />
+          </div>
+
+          <div>
+            <SectionTitle>Value streams that operate the company</SectionTitle>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+              {mission.valueStreams.map((stream) => (
+                <div key={stream.name} className="rounded-md border border-s-border bg-s-base p-3">
+                  <div className="text-[13px] font-medium text-s-primary">{stream.name}</div>
+                  <div className="mt-1 text-[12px] leading-relaxed text-s-secondary">{stream.objective}</div>
+                  <div className="mt-2 flex flex-wrap gap-1.5">{stream.automationLoop.map((step) => <Token key={step}>{step}</Token>)}</div>
+                  <div className="mt-2 flex flex-wrap gap-1.5">{stream.axonSurfaces.map((surface) => <Token key={surface}>{surface}</Token>)}</div>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div>
@@ -261,6 +314,77 @@ function MissionDetail({ mission }: { mission: CompanyOperatingMission | null })
       </Card>
 
       <div className="space-y-4 min-w-0">
+        <SidePanel title="AXON runtime links" icon={<Network size={14} className="text-s-brand" />}>
+          <Asset label="Activation" value={`${mission.axonIntegration.status}${mission.axonIntegration.score ? ` · ${mission.axonIntegration.score}%` : ''}`} />
+          <Asset label="Build Studio blueprint" value={mission.axonIntegration.productBlueprintId} />
+          <Asset label="Mission Control" value={mission.axonIntegration.missionControlRunId ?? 'not activated'} />
+          <Asset label="Agentic Mesh" value={mission.axonIntegration.agenticMeshBlueprintId ?? 'not activated'} />
+          <Asset label="Release Command" value={mission.axonIntegration.releaseMissionId ?? 'not activated'} />
+          <Asset label="Trust records" value={String(mission.axonIntegration.trustRecordIds.length)} />
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="secondary" size="sm" onClick={onOpenBuildStudio}>Build Studio</Button>
+            <Button variant="secondary" size="sm" onClick={onOpenMissionControl} disabled={!mission.axonIntegration.missionControlRunId}>Mission Control</Button>
+          </div>
+        </SidePanel>
+
+        <SidePanel title="Knowledge fabric" icon={<ShieldCheck size={14} className="text-s-brand" />}>
+          <Asset label="Permission model" value={mission.knowledgeFabric.permissionModel} />
+          <Asset label="Citation policy" value={mission.knowledgeFabric.citationPolicy} />
+          <Asset label="Freshness SLA" value={mission.knowledgeFabric.freshnessSla} />
+          <div className="space-y-2">
+            {mission.knowledgeFabric.sources.slice(0, 4).map((source) => (
+              <div key={source.system} className="rounded-md border border-s-border bg-s-base p-3">
+                <div className="text-[12.5px] font-medium text-s-primary">{source.system}</div>
+                <div className="mt-1 text-[12px] leading-relaxed text-s-secondary">{source.data}</div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  <Token>{source.syncMode}</Token>
+                  <Token>{source.owner}</Token>
+                </div>
+              </div>
+            ))}
+          </div>
+        </SidePanel>
+
+        <SidePanel title="Governance controls" icon={<ShieldCheck size={14} className="text-s-brand" />}>
+          {mission.governanceControls.map((control) => (
+            <div key={control.control} className="rounded-md border border-s-border bg-s-base p-3">
+              <div className="text-[12.5px] font-medium text-s-primary">{control.control}</div>
+              <div className="mt-1 text-[12px] leading-relaxed text-s-secondary">{control.enforcement}</div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <Token>{control.framework}</Token>
+                <Token>{control.owner}</Token>
+              </div>
+            </div>
+          ))}
+        </SidePanel>
+
+        <SidePanel title="Integration fabric" icon={<CloudCog size={14} className="text-s-brand" />}>
+          {mission.integrationFabric.slice(0, 6).map((integration) => (
+            <div key={integration.system} className="rounded-md border border-s-border bg-s-base p-3">
+              <div className="text-[12.5px] font-medium text-s-primary">{integration.system}</div>
+              <div className="mt-1 text-[12px] leading-relaxed text-s-secondary">{integration.dataPolicy}</div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <Token>{integration.domain}</Token>
+                <Token>{integration.connectorType}</Token>
+                <Token>{integration.actionsEnabled.length} actions</Token>
+              </div>
+            </div>
+          ))}
+        </SidePanel>
+
+        <SidePanel title="Decision rights" icon={<Users size={14} className="text-s-brand" />}>
+          {mission.decisionRights.map((decision) => (
+            <div key={decision.decision} className="rounded-md border border-s-border bg-s-base p-3">
+              <div className="flex items-center gap-2">
+                <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-s-primary">{decision.decision}</span>
+                <Token>{decision.autonomy}</Token>
+              </div>
+              <div className="mt-1 text-[12px] leading-relaxed text-s-secondary">{decision.policy}</div>
+              <div className="mt-2 text-[12px] text-s-muted">{decision.escalation}</div>
+            </div>
+          ))}
+        </SidePanel>
+
         <SidePanel title="Command hierarchy" icon={<GitBranch size={14} className="text-s-brand" />}>
           {mission.commandSystem.map((level) => (
             <div key={level.level} className="rounded-md border border-s-border bg-s-base p-3">

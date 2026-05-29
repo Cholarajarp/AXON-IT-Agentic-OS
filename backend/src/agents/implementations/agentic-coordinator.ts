@@ -1,7 +1,7 @@
 import type { AgentExecutionInput } from '../types.js';
-import { SimulatedAgent } from './base.js';
+import { DeterministicAgent } from './base.js';
 
-export class AgenticCoordinatorAgent extends SimulatedAgent {
+export class AgenticCoordinatorAgent extends DeterministicAgent {
   name = 'AgenticCoordinatorAgent';
   description = 'Turns specialist roles into agentic teams with topology, handoffs, shared state, and quality loops';
   version = '1.0.0';
@@ -24,6 +24,6 @@ export class AgenticCoordinatorAgent extends SimulatedAgent {
     };
   }
 
-  protected getSimulatedDurationMs() { return 900 + Math.random() * 450; }
-  protected getSimulatedCost() { return 0.002 + Math.random() * 0.0015; }
+  protected estimateDurationMs() { return 1125; }
+  protected estimateCost() { return 0.0028; }
 }

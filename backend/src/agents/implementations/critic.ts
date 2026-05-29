@@ -1,7 +1,7 @@
 import type { AgentExecutionInput } from '../types.js';
-import { SimulatedAgent } from './base.js';
+import { DeterministicAgent } from './base.js';
 
-export class CriticAgent extends SimulatedAgent {
+export class CriticAgent extends DeterministicAgent {
   name = 'CriticAgent';
   description = 'Evaluates agent outputs, detects contradictions, requests rework, and stops quality loops';
   version = '1.0.0';
@@ -25,6 +25,6 @@ export class CriticAgent extends SimulatedAgent {
     };
   }
 
-  protected getSimulatedDurationMs() { return 760 + Math.random() * 300; }
-  protected getSimulatedCost() { return 0.0015 + Math.random() * 0.001; }
+  protected estimateDurationMs() { return 910; }
+  protected estimateCost() { return 0.002; }
 }

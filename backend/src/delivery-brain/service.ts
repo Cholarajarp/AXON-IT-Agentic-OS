@@ -191,7 +191,7 @@ function buildDecisionTrace(regulated: boolean, companyScale: boolean, operate: 
     {
       decision: 'Top-level product shape',
       selected: companyScale ? 'Company OS + Delivery Brain' : 'Build Studio + Delivery Brain',
-      rationale: 'The user needs an operating company, not a narrow chatbot or coding assistant.',
+      rationale: 'The user needs an IT-service-grade software delivery operating system, not a narrow chatbot or coding assistant.',
       alternatives: ['single chat agent', 'ticket-only system', 'IDE-only assistant'],
       risk: 'high',
       evidence: ['mission scope', 'service-line needs', 'Company OS composition'],
@@ -235,7 +235,7 @@ function buildSecurityControls(regulated: boolean): DeliveryBrainDossier['securi
 
 function buildUxModel(companyScale: boolean): DeliveryBrainDossier['uxAndProductExperience'] {
   return [
-    { surface: 'Company OS', userNeed: 'understand the whole IT company in one place', designRule: 'show service lines, economics, command hierarchy, generated assets, and trust controls above the fold', successSignal: 'founder can explain the operating model in two minutes' },
+    { surface: 'Company OS', userNeed: 'understand the full IT service software operating model in one place', designRule: 'show service lines, economics, command hierarchy, generated assets, and trust controls above the fold', successSignal: 'founder can explain the delivery operating model in two minutes' },
     { surface: 'Delivery Brain', userNeed: 'trust that the system understood without repetitive questions', designRule: 'show inferred intent, assumptions, blocker questions, and decision trace', successSignal: 'user edits assumptions instead of retyping the mission' },
     { surface: 'Build Studio', userNeed: 'see the product being built and previewed', designRule: 'start with usable workflow, not a marketing page', successSignal: 'blueprint launches into executable workflow with preview' },
     { surface: 'Security/Database/Checkpoints', userNeed: 'know what can break and how it is controlled', designRule: 'make gates explicit and evidence-based', successSignal: 'release blocker is understandable and actionable' },

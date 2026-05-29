@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createClientId } from "./ids";
 
 export type WorkflowState =
   | "RUNNING"
@@ -125,7 +126,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     () => ({
       ...state,
       submitGoal: ({ name, goal, domain }) => {
-        const id = `wf_${Math.random().toString(36).slice(2, 8)}`;
+        const id = createClientId("wf");
         const wf: Workflow = {
           id,
           name,

@@ -11,7 +11,7 @@ import type { ASTNode, ISymbolExtractor, Symbol, SymbolType } from './types.js';
  * Symbol Extractor
  * Extracts code symbols from Abstract Syntax Trees.
  *
- * This MVP uses deterministic line-level parsing. The interface remains AST-based
+ * This extractor uses deterministic line-level parsing. The interface remains AST-based
  * so tree-sitter can replace these matchers without changing callers.
  */
 export class SymbolExtractor implements ISymbolExtractor {

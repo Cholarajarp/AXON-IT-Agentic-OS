@@ -2,37 +2,79 @@
 
 :root {
   --font-size: 14px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "SF Mono", "Fira Code", "Cascadia Code", "JetBrains Mono", Consolas, monospace;
 
-  /* AXON IT Agentic AI OS tokens - light */
-  --s-bg-base: #F7F8FA;
-  --s-bg-surface: #FFFFFF;
-  --s-bg-elevated: #FFFFFF;
-  --s-bg-subtle: #F1F2F5;
-  --s-bg-hover: #ECEEF2;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 14px;
+  --text-md: 16px;
+  --text-lg: 20px;
+  --text-xl: 24px;
+  --text-2xl: 28px;
+  --text-3xl: 34px;
 
-  --s-border: #E4E6EB;
-  --s-border-strong: #D1D4DB;
+  --bg-base: #F2F2F7;
+  --bg-surface: #FFFFFF;
+  --bg-elevated: #FFFFFF;
+  --bg-overlay: rgba(0, 0, 0, 0.04);
+  --bg-input: #FFFFFF;
 
-  --s-text-primary: #111318;
-  --s-text-secondary: #555870;
-  --s-text-muted: #8B8FA8;
-  --s-text-code: #00875A;
+  --border-subtle: rgba(0, 0, 0, 0.08);
+  --border-default: rgba(0, 0, 0, 0.12);
+  --border-strong: rgba(0, 0, 0, 0.20);
+  --border-focus: #007AFF;
 
-  --s-brand: #0070F3;
-  --s-brand-dim: #0058C7;
-  --s-brand-glow: rgba(0, 112, 243, 0.10);
-  --s-brand-soft: rgba(0, 112, 243, 0.08);
+  --text-primary: #000000;
+  --text-secondary: rgba(60, 60, 67, 0.60);
+  --text-tertiary: rgba(60, 60, 67, 0.30);
+  --text-link: #007AFF;
 
-  --s-success: #00875A;
-  --s-success-soft: rgba(0, 135, 90, 0.10);
-  --s-warning: #C77700;
-  --s-warning-soft: rgba(199, 119, 0, 0.10);
-  --s-critical: #D4183D;
-  --s-critical-soft: rgba(212, 24, 61, 0.10);
-  --s-info: #5B6FE0;
-  --s-info-soft: rgba(91, 111, 224, 0.10);
-  --s-blocked: #C04A1B;
-  --s-blocked-soft: rgba(192, 74, 27, 0.10);
+  --color-accent: #007AFF;
+  --color-success: #34C759;
+  --color-warning: #FF9500;
+  --color-danger: #FF3B30;
+  --color-purple: #AF52DE;
+  --color-teal: #5AC8FA;
+
+  --fill-accent: rgba(0, 122, 255, 0.10);
+  --fill-success: rgba(52, 199, 89, 0.10);
+  --fill-warning: rgba(255, 149, 0, 0.10);
+  --fill-danger: rgba(255, 59, 48, 0.10);
+  --fill-purple: rgba(175, 82, 222, 0.10);
+  --fill-neutral: rgba(0, 0, 0, 0.05);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+
+  /* AXON aliases consumed by the existing app shell. */
+  --s-bg-base: var(--bg-base);
+  --s-bg-surface: var(--bg-surface);
+  --s-bg-elevated: var(--bg-elevated);
+  --s-bg-subtle: var(--fill-neutral);
+  --s-bg-hover: var(--bg-overlay);
+
+  --s-border: var(--border-default);
+  --s-border-strong: var(--border-strong);
+
+  --s-text-primary: var(--text-primary);
+  --s-text-secondary: var(--text-secondary);
+  --s-text-muted: var(--text-tertiary);
+  --s-text-code: var(--color-success);
+
+  --s-brand: var(--color-accent);
+  --s-brand-dim: var(--text-link);
+  --s-brand-glow: var(--fill-accent);
+  --s-brand-soft: var(--fill-accent);
+
+  --s-success: var(--color-success);
+  --s-success-soft: var(--fill-success);
+  --s-warning: var(--color-warning);
+  --s-warning-soft: var(--fill-warning);
+  --s-critical: var(--color-danger);
+  --s-critical-soft: var(--fill-danger);
+  --s-info: var(--color-teal);
+  --s-info-soft: rgba(90, 200, 250, 0.10);
+  --s-blocked: var(--color-warning);
+  --s-blocked-soft: var(--fill-warning);
 
   /* shadcn legacy */
   --background: var(--s-bg-base);
@@ -62,35 +104,66 @@
 }
 
 .dark {
-  --s-bg-base: #0E1117;
-  --s-bg-surface: #141820;
-  --s-bg-elevated: #1B202A;
-  --s-bg-subtle: #202632;
-  --s-bg-hover: #252C38;
+  --bg-base: #000000;
+  --bg-surface: #111111;
+  --bg-elevated: #1C1C1E;
+  --bg-overlay: rgba(255, 255, 255, 0.04);
+  --bg-input: #1C1C1E;
 
-  --s-border: #303644;
-  --s-border-strong: #444B5C;
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.18);
+  --border-focus: #0A84FF;
 
-  --s-text-primary: #F2F4F8;
-  --s-text-secondary: #A7AFBF;
-  --s-text-muted: #687084;
-  --s-text-code: #A8EDCF;
+  --text-primary: #FFFFFF;
+  --text-secondary: rgba(235, 235, 245, 0.60);
+  --text-tertiary: rgba(235, 235, 245, 0.30);
+  --text-link: #0A84FF;
 
-  --s-brand: #5EA1FF;
-  --s-brand-dim: #3478F6;
-  --s-brand-glow: rgba(94, 161, 255, 0.18);
-  --s-brand-soft: rgba(94, 161, 255, 0.10);
+  --color-accent: #0A84FF;
+  --color-success: #30D158;
+  --color-warning: #FF9F0A;
+  --color-danger: #FF453A;
+  --color-purple: #BF5AF2;
+  --color-teal: #64D2FF;
 
-  --s-success: #00D084;
-  --s-success-soft: rgba(0, 208, 132, 0.12);
-  --s-warning: #F5A623;
-  --s-warning-soft: rgba(245, 166, 35, 0.12);
-  --s-critical: #FF4444;
-  --s-critical-soft: rgba(255, 68, 68, 0.12);
-  --s-info: #7B8FF0;
-  --s-info-soft: rgba(123, 143, 240, 0.14);
-  --s-blocked: #FF6B35;
-  --s-blocked-soft: rgba(255, 107, 53, 0.12);
+  --fill-accent: rgba(10, 132, 255, 0.15);
+  --fill-success: rgba(48, 209, 88, 0.15);
+  --fill-warning: rgba(255, 159, 10, 0.15);
+  --fill-danger: rgba(255, 69, 58, 0.15);
+  --fill-purple: rgba(191, 90, 242, 0.15);
+  --fill-neutral: rgba(255, 255, 255, 0.08);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.15);
+
+  --s-bg-base: var(--bg-base);
+  --s-bg-surface: var(--bg-surface);
+  --s-bg-elevated: var(--bg-elevated);
+  --s-bg-subtle: var(--fill-neutral);
+  --s-bg-hover: var(--bg-overlay);
+
+  --s-border: var(--border-default);
+  --s-border-strong: var(--border-strong);
+
+  --s-text-primary: var(--text-primary);
+  --s-text-secondary: var(--text-secondary);
+  --s-text-muted: var(--text-tertiary);
+  --s-text-code: var(--color-success);
+
+  --s-brand: var(--color-accent);
+  --s-brand-dim: var(--text-link);
+  --s-brand-glow: var(--fill-accent);
+  --s-brand-soft: var(--fill-accent);
+
+  --s-success: var(--color-success);
+  --s-success-soft: var(--fill-success);
+  --s-warning: var(--color-warning);
+  --s-warning-soft: var(--fill-warning);
+  --s-critical: var(--color-danger);
+  --s-critical-soft: var(--fill-danger);
+  --s-info: var(--color-teal);
+  --s-info-soft: rgba(100, 210, 255, 0.15);
+  --s-blocked: var(--color-warning);
+  --s-blocked-soft: var(--fill-warning);
 
   --background: var(--s-bg-base);
   --foreground: var(--s-text-primary);
@@ -174,11 +247,20 @@
   body {
     margin: 0;
     background-color: var(--s-bg-base);
-    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent 240px);
     color: var(--s-text-primary);
-    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: var(--font-sans);
+    letter-spacing: 0;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  * {
+    box-shadow: none !important;
+  }
+
+  :where(button, [href], input, select, textarea, [role="button"], [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid var(--border-focus) !important;
+    outline-offset: 2px;
   }
 
   #root {
@@ -193,15 +275,15 @@
   }
 
   .font-mono, .mono {
-    font-family: 'JetBrains Mono', 'SF Mono', ui-monospace, Menlo, monospace;
+    font-family: var(--font-mono);
     font-feature-settings: "liga" 0, "calt" 0;
   }
 
   .label-mono {
-    font-family: 'JetBrains Mono', ui-monospace, monospace;
-    font-size: 10px;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
     font-weight: 500;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--s-text-muted);
   }
@@ -218,7 +300,7 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: var(--s-border);
+    background: var(--scrollbar-thumb);
     border-radius: 4px;
     border: 2px solid transparent;
     background-clip: padding-box;

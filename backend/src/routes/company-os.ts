@@ -36,6 +36,17 @@ export async function registerCompanyOsRoutes(app: FastifyInstance) {
     if (!mission) return reply.status(404).send({ message: 'Company OS mission not found' });
     return mission;
   });
+
+  app.post('/company-os/missions/:id/activate-axon', async (request, reply) => {
+    const parsed = idParamsSchema.safeParse(request.params);
+    if (!parsed.success) return validationError(reply, parsed.error.issues);
+    const mission = await companyOs.activateMission(parsed.data.id);
+    if (!mission) return reply.status(404).send({ message: 'Company OS mission not found' });
+    return reply.status(202).send({
+      mission,
+      message: 'Company OS activated through AXON Mission Control',
+    });
+  });
 }
 
 function validationError(reply: FastifyReply, issues: z.ZodIssue[]) {

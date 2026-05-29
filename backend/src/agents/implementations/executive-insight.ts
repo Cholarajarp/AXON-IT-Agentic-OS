@@ -1,7 +1,7 @@
 import type { AgentExecutionInput } from '../types.js';
-import { SimulatedAgent } from './base.js';
+import { DeterministicAgent } from './base.js';
 
-export class ExecutiveInsightAgent extends SimulatedAgent {
+export class ExecutiveInsightAgent extends DeterministicAgent {
   name = 'ExecutiveInsightAgent';
   description = 'Generates executive summaries, analyzes trends, makes recommendations';
   version = '1.0.0';
@@ -30,6 +30,6 @@ export class ExecutiveInsightAgent extends SimulatedAgent {
     };
   }
 
-  protected getSimulatedDurationMs() { return 2000 + Math.random() * 1000; }
-  protected getSimulatedCost() { return 0.008 + Math.random() * 0.004; }
+  protected estimateDurationMs() { return 2500; }
+  protected estimateCost() { return 0.01; }
 }

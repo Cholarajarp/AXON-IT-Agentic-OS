@@ -102,3 +102,110 @@ export interface MarketRadarLaunch {
   status: string;
   score: number;
 }
+
+export type CompetitorCategory =
+  | 'itsm-ai'
+  | 'software-agent'
+  | 'agent-platform'
+  | 'governance'
+  | 'observability';
+
+export interface CompetitorProfile {
+  id: string;
+  name: string;
+  category: CompetitorCategory;
+  currentEdge: string;
+  weakSpot: string;
+  axonCounter: string;
+  sourceUrl: string;
+}
+
+export interface CompetitiveCapability {
+  id: string;
+  title: string;
+  area: CapabilityArea;
+  marketBar: string;
+  competitorLeaders: string[];
+  axonProof: string[];
+  score: number;
+  targetScore: number;
+  gap: string;
+  nextMove: string;
+  route: string;
+}
+
+export interface MoatLane {
+  id: string;
+  title: string;
+  winCondition: string;
+  proof: string[];
+  ownerModules: string[];
+  riskIfIgnored: string;
+  score: number;
+}
+
+export interface CompetitiveBenchmarkReport {
+  id: string;
+  generatedAt: string;
+  thesis: string;
+  sourceWindow: string;
+  overallScore: number;
+  competitors: CompetitorProfile[];
+  capabilities: CompetitiveCapability[];
+  moatLanes: MoatLane[];
+  topMoves: Array<{
+    order: number;
+    capabilityId: string;
+    move: string;
+    expectedLift: number;
+  }>;
+  sourceNotes: string[];
+}
+
+export interface MoatActivationRun {
+  id: string;
+  reportId: string;
+  generatedAt: string;
+  status: 'created' | 'in-progress';
+  progress: {
+    score: number;
+    completedGates: number;
+    totalGates: number;
+  };
+  summary: string;
+  tactic: string;
+  stageGates: Array<{
+    id: string;
+    title: string;
+    ownerAgent: string;
+    status: 'pass' | 'warn' | 'block' | 'pending';
+    score: number;
+    evidence: string[];
+    nextAction: string;
+  }>;
+  proofArtifacts: Array<{
+    id: string;
+    name: string;
+    kind: string;
+    uri: string;
+    sha256: string;
+    source: string;
+  }>;
+  riskRegister: Array<{
+    id: string;
+    severity: 'low' | 'medium' | 'high' | 'critical';
+    title: string;
+    mitigation: string;
+    ownerAgent: string;
+  }>;
+  missionControlRuns: Array<{
+    capabilityId: string;
+    capabilityTitle: string;
+    missionControlRunId: string;
+    releaseMissionId: string;
+    status: string;
+    score: number;
+    proof: string[];
+  }>;
+  nextReviewAt: string;
+}

@@ -1,7 +1,7 @@
 import type { AgentExecutionInput } from '../types.js';
-import { SimulatedAgent } from './base.js';
+import { DeterministicAgent } from './base.js';
 
-export class DatabaseArchitectAgent extends SimulatedAgent {
+export class DatabaseArchitectAgent extends DeterministicAgent {
   name = 'DatabaseArchitectAgent';
   description = 'Designs secure schemas, migration plans, indexes, constraints, and database rollout strategy';
   version = '1.0.0';
@@ -24,6 +24,6 @@ export class DatabaseArchitectAgent extends SimulatedAgent {
     };
   }
 
-  protected getSimulatedDurationMs() { return 1200 + Math.random() * 500; }
-  protected getSimulatedCost() { return 0.006 + Math.random() * 0.003; }
+  protected estimateDurationMs() { return 1450; }
+  protected estimateCost() { return 0.0075; }
 }

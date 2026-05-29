@@ -56,6 +56,7 @@ import { registerWsGateway } from './ws/gateway.js';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
 const HOST = process.env.HOST || '0.0.0.0';
+const BODY_LIMIT_BYTES = parseInt(process.env.AXON_API_BODY_LIMIT_BYTES || '2097152', 10);
 
 function serviceIndex() {
   return {
@@ -81,14 +82,27 @@ async function main() {
           ? { target: 'pino-pretty', options: { colorize: true } }
           : undefined,
     },
+    bodyLimit: BODY_LIMIT_BYTES,
   });
 
   // Plugins
   await app.register(cors, {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    origin: parseCorsOrigin(process.env.CORS_ORIGIN),
     credentials: true,
   });
-  await app.register(helmet, { contentSecurityPolicy: false });
+  await app.register(helmet, {
+    contentSecurityPolicy:
+      process.env.NODE_ENV === 'production'
+        ? {
+            directives: {
+              defaultSrc: ["'self'"],
+              baseUri: ["'self'"],
+              frameAncestors: ["'none'"],
+              objectSrc: ["'none'"],
+            },
+          }
+        : false,
+  });
   await app.register(compress);
   await app.register(websocket);
 
@@ -198,3 +212,12 @@ main().catch((err) => {
   console.error('Fatal error starting server:', err);
   process.exit(1);
 });
+
+function parseCorsOrigin(value?: string) {
+  const configured = value || 'http://localhost:5173';
+  const origins = configured
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  return origins.length === 1 ? origins[0] : origins;
+}

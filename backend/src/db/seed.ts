@@ -39,7 +39,7 @@ async function seed() {
       generated_at = EXCLUDED.generated_at
   `;
 
-  console.log('[seed] Baseline seed complete. No synthetic customer workflows, incidents, alerts, or memory records were inserted.');
+  console.log('[seed] Baseline seed complete. No customer workflows, incidents, alerts, or memory records were inserted.');
   await closeConnection();
 }
 

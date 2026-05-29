@@ -15,6 +15,31 @@ backend/dist/
 .env.development
 .env.production
 .env.test
+backend/.env
+backend/.env.local
+backend/.env.*.local
+backend/.env.development
+backend/.env.production
+backend/.env.test
+.envrc
+
+# Secrets and credentials
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+.npmrc
+secrets/
+.secrets/
+.vercel/
+.railway/
+.render/
+.fly/
 
 # IDE files
 .idea/
@@ -45,6 +70,9 @@ playwright-report/
 *.local
 .axon/
 backend/.axon/
+*.sqlite
+*.sqlite3
+*.db
 
 # Internal planning and architecture notes
 docs/

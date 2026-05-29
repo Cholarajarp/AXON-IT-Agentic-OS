@@ -11,7 +11,7 @@ describe('delivery brain routes', () => {
       method: 'POST',
       url: '/delivery-brain/dossiers',
       payload: {
-        mission: 'Build next level IT agent OS that understands user needs once, builds enterprise AI software products, shows how it works, proves security, modern UI/UX, deployment, management, current skills from GitHub, and cost-controlled operations to beat a 200000 employee IT company',
+        mission: 'Build next level IT agent OS that understands user needs once, builds enterprise AI software products, shows how it works, proves security, modern UI/UX, deployment, management, current skills from GitHub, and cost-controlled operations at IT-service-grade quality',
         regulated: true,
         budgetUsd: 5000000,
         existingAnswers: {

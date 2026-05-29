@@ -1,7 +1,7 @@
 import type { AgentExecutionInput } from '../types.js';
-import { SimulatedAgent } from './base.js';
+import { DeterministicAgent } from './base.js';
 
-export class SolutionArchitectAgent extends SimulatedAgent {
+export class SolutionArchitectAgent extends DeterministicAgent {
   name = 'SolutionArchitectAgent';
   description = 'Designs system architecture, selects technologies, designs APIs';
   version = '1.0.0';
@@ -33,6 +33,6 @@ export class SolutionArchitectAgent extends SimulatedAgent {
     };
   }
 
-  protected getSimulatedDurationMs() { return 2000 + Math.random() * 1000; }
-  protected getSimulatedCost() { return 0.008 + Math.random() * 0.004; }
+  protected estimateDurationMs() { return 2500; }
+  protected estimateCost() { return 0.01; }
 }

@@ -2,6 +2,7 @@ import { nanoid } from 'nanoid';
 import type {
   AccessibilityFinding,
   BrowserDeviceProfile,
+  BrowserQaEvidenceMode,
   BrowserJourneyInput,
   BrowserJourneyRun,
   BrowserQaArtifact,
@@ -59,6 +60,7 @@ export class BrowserQaService {
       name,
       releaseGoal,
       targetUrl: input.targetUrl,
+      evidenceMode: page.evidenceMode,
       status,
       score,
       summary: buildSummary(name, status, score, journeyRuns, accessibilityFindings),
@@ -80,12 +82,14 @@ export class BrowserQaService {
 interface LoadedPreview {
   html: string;
   preview: PreviewProbe;
+  evidenceMode: BrowserQaEvidenceMode;
 }
 
 async function loadPreview(targetUrl?: string, htmlSnapshot?: string): Promise<LoadedPreview> {
   if (htmlSnapshot?.trim()) {
     return {
       html: htmlSnapshot,
+      evidenceMode: 'html-snapshot',
       preview: {
         url: targetUrl,
         reachable: true,
@@ -100,6 +104,7 @@ async function loadPreview(targetUrl?: string, htmlSnapshot?: string): Promise<L
   if (!targetUrl?.trim()) {
     return {
       html: defaultHtml,
+      evidenceMode: 'generated-fallback',
       preview: {
         reachable: false,
         error: 'No preview URL was supplied. Offline fallback was analyzed so the QA plan can still be generated.',
@@ -120,6 +125,7 @@ async function loadPreview(targetUrl?: string, htmlSnapshot?: string): Promise<L
     const body = await response.text();
     return {
       html: body,
+      evidenceMode: 'live-url',
       preview: {
         url: targetUrl,
         reachable: response.ok,
@@ -133,6 +139,7 @@ async function loadPreview(targetUrl?: string, htmlSnapshot?: string): Promise<L
   } catch (error) {
     return {
       html: '',
+      evidenceMode: 'live-url',
       preview: {
         url: targetUrl,
         reachable: false,

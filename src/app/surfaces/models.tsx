@@ -1,8 +1,17 @@
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { Activity, Copy, Cpu, Gauge, Loader2, RefreshCw, Route, Server, Shield, Zap } from "lucide-react";
+import { Activity, Copy, Cpu, Gauge, Loader2, MessageSquareText, RefreshCw, Route, Server, Shield, Zap } from "lucide-react";
 import { Button, Card, CardHeader, EmptyState, Kpi, PageHeader, SeverityBadge } from "../components/ui/primitives";
-import { useModelCatalog, useModelRuntimeStatus, type ModelCatalogResponse, type ModelRoute, type ModelRuntimeStatus } from "../lib/queries";
+import {
+  useInvokeModel,
+  useModelCatalog,
+  useModelRuntimeStatus,
+  useRefreshModelHealth,
+  type ModelCatalogResponse,
+  type ModelInvokeResponse,
+  type ModelRoute,
+  type ModelRuntimeStatus,
+} from "../lib/queries";
 import { useToast } from "../lib/toast";
 
 type CatalogProvider = ModelCatalogResponse["modelCatalog"][number];
@@ -54,7 +63,10 @@ const providerSetup: Partial<Record<ModelRoute["provider"], { env: string[]; not
 export function Models() {
   const { data: catalog, isLoading, isError, error, refetch, isFetching } = useModelCatalog();
   const { data: runtimeStatus, refetch: refetchRuntime } = useModelRuntimeStatus();
+  const refreshHealth = useRefreshModelHealth();
+  const invokeModel = useInvokeModel();
   const [selectedProvider, setSelectedProvider] = useState<string>("all");
+  const [probeResult, setProbeResult] = useState<ModelInvokeResponse | null>(null);
   const { toast } = useToast();
 
   const providers = catalog?.modelCatalog ?? [];
@@ -64,6 +76,42 @@ export function Models() {
   const bestQuality = allModels.reduce<CatalogModel | null>((best, item) => (!best || item.model.quality > best.quality ? item.model : best), null);
   const liveProviders = new Set(runtimeStatus?.providers ?? []);
   const healthyProviders = runtimeStatus?.health.filter((provider) => provider.healthy).length ?? 0;
+
+  const handleRefreshHealth = async () => {
+    try {
+      const result = await refreshHealth.mutateAsync();
+      await refetchRuntime();
+      const healthy = result.results.filter((provider) => provider.healthy).length;
+      toast({ kind: "success", title: "Provider health refreshed", description: `${healthy}/${result.results.length} providers are healthy.` });
+    } catch (err) {
+      toast({ kind: "error", title: "Health refresh failed", description: err instanceof Error ? err.message : "Unable to refresh provider health." });
+    }
+  };
+
+  const handleRouteProbe = async () => {
+    const probeProvider = runtimeStatus?.providers.includes("localMock") ? "localMock" : undefined;
+    try {
+      const response = await invokeModel.mutateAsync({
+        model: probeProvider ? "mock-small" : undefined,
+        preferredProvider: probeProvider,
+        messages: [
+          { role: "system", content: "You are an AXON route probe. Return a concise operational acknowledgement." },
+          { role: "user", content: "Return AXON_ROUTE_PROBE_OK and name the routed provider." },
+        ],
+        taskType: "routing-probe",
+        tenantId: "tenant_default",
+        sensitivityLevel: "internal",
+        costBudget: 0.05,
+        sovereignMode: probeProvider === "localMock",
+        bypassCache: true,
+        maxTokens: 96,
+      });
+      setProbeResult(response);
+      toast({ kind: "success", title: "Route probe completed", description: `${response.provider}/${response.model} answered in ${response.latencyMs}ms.` });
+    } catch (err) {
+      toast({ kind: "error", title: "Route probe failed", description: err instanceof Error ? err.message : "Unable to invoke a model route." });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -100,7 +148,12 @@ export function Models() {
         action={
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="sm" icon={<RefreshCw size={13} className={isFetching ? "animate-spin" : ""} />} onClick={() => refetch()}>Refresh catalog</Button>
-            <Button variant="secondary" size="sm" icon={<RefreshCw size={13} className={runtimeStatus ? "" : "animate-spin"} />} onClick={() => refetchRuntime()}>Refresh health</Button>
+            <Button variant="secondary" size="sm" icon={<RefreshCw size={13} className={refreshHealth.isPending ? "animate-spin" : ""} />} onClick={handleRefreshHealth} disabled={refreshHealth.isPending}>
+              Health
+            </Button>
+            <Button variant="primary" size="sm" icon={<MessageSquareText size={13} />} onClick={handleRouteProbe} disabled={invokeModel.isPending}>
+              {invokeModel.isPending ? "Probing" : "Route probe"}
+            </Button>
           </div>
         }
       />
@@ -134,6 +187,29 @@ export function Models() {
               }}
             />
           ))}
+        </div>
+      </Card>
+
+      <Card className="mb-5 overflow-hidden">
+        <CardHeader
+          title="Live route probe"
+          subtitle={probeResult ? `${probeResult.provider}/${probeResult.model} · ${probeResult.latencyMs}ms · $${probeResult.cost.toFixed(4)}` : "Run a backend model invocation to verify the router end to end"}
+          action={<Button variant="secondary" size="sm" icon={<MessageSquareText size={12} />} onClick={handleRouteProbe} disabled={invokeModel.isPending}>{invokeModel.isPending ? "Running" : "Run"}</Button>}
+        />
+        <div className="p-4">
+          {probeResult ? (
+            <div className="rounded-md border border-s-border bg-s-subtle p-3">
+              <div className="mb-2 flex flex-wrap gap-1.5">
+                <Token>{probeResult.provider}</Token>
+                <Token>{probeResult.model}</Token>
+                <Token>{probeResult.cached ? "cached" : "fresh"}</Token>
+                <Token>{probeResult.tokensIn + probeResult.tokensOut} tokens</Token>
+              </div>
+              <div className="text-[12.5px] leading-relaxed text-s-secondary">{probeResult.content}</div>
+            </div>
+          ) : (
+            <EmptyState icon={<Route size={18} />} title="No route probe run yet" description="Use Route probe to verify provider selection, invocation, cost logging, and latency." />
+          )}
         </div>
       </Card>
 
@@ -343,6 +419,10 @@ function Metric({ icon, label, value }: { icon: ReactNode; label: string; value:
       <div className="text-[13px] font-mono text-s-primary truncate">{value}</div>
     </div>
   );
+}
+
+function Token({ children }: { children: ReactNode }) {
+  return <span className="rounded border border-s-border bg-s-base px-1.5 py-0.5 text-[10px] font-mono text-s-muted">{children}</span>;
 }
 
 function Score({ icon, label, value, inverted = false }: { icon: ReactNode; label: string; value: number; inverted?: boolean }) {

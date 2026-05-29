@@ -1,7 +1,7 @@
 import type { AgentExecutionInput } from '../types.js';
-import { SimulatedAgent } from './base.js';
+import { DeterministicAgent } from './base.js';
 
-export class ReleaseAgent extends SimulatedAgent {
+export class ReleaseAgent extends DeterministicAgent {
   name = 'ReleaseAgent';
   description = 'Manages releases, rollbacks, feature flags, canary deployments';
   version = '1.0.0';
@@ -25,6 +25,6 @@ export class ReleaseAgent extends SimulatedAgent {
     };
   }
 
-  protected getSimulatedDurationMs() { return 3000 + Math.random() * 2000; }
-  protected getSimulatedCost() { return 0.003 + Math.random() * 0.002; }
+  protected estimateDurationMs() { return 4000; }
+  protected estimateCost() { return 0.004; }
 }

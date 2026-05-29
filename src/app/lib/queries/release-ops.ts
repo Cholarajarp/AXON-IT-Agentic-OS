@@ -10,6 +10,7 @@ import type {
   BrowserDeviceProfile,
   BrowserJourneyInput,
   BrowserQaReport,
+  CompetitiveBenchmarkReport,
   FinOpsRisk,
   FinOpsSensitivity,
   FinOpsTaskType,
@@ -18,6 +19,7 @@ import type {
   MeshTopology,
   MissionControlRun,
   ModelFinOpsReport,
+  MoatActivationRun,
   ProductionActivationResult,
   ProductionReadinessReport,
   ReleaseCommandMission,
@@ -61,7 +63,7 @@ export function useCreateApiForgeReport() {
 }
 
 /* ============================================================
- * Browser QA — live preview, synthetic journeys, a11y, Playwright evidence
+ * Browser QA — live preview, journey assertions, a11y, Playwright evidence
  * ============================================================ */
 
 export function useBrowserQaReports(options?: Partial<UseQueryOptions<{ reports: BrowserQaReport[] }>>) {
@@ -229,6 +231,40 @@ export function useCreateMissionControlRun() {
 /* ============================================================
  * Market Radar — market signal to build-pack compiler
  * ============================================================ */
+
+export function useCompetitiveBenchmark(options?: Partial<UseQueryOptions<CompetitiveBenchmarkReport>>) {
+  return useQuery({
+    queryKey: queryKeys.competitiveBenchmark,
+    queryFn: () => fetchAPI<CompetitiveBenchmarkReport>('/market-radar/competitive-benchmark'),
+    ...defaultQueryOptions,
+    ...options,
+  });
+}
+
+export function useMoatActivationRuns(options?: Partial<UseQueryOptions<{ runs: MoatActivationRun[] }>>) {
+  return useQuery({
+    queryKey: queryKeys.moatActivationRuns,
+    queryFn: () => fetchAPI<{ runs: MoatActivationRun[] }>('/market-radar/moat-activation-runs'),
+    ...defaultQueryOptions,
+    ...options,
+  });
+}
+
+export function useCreateMoatActivationRun() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { tactic?: string; maxMissions?: number; tenantId?: string } = {}) =>
+      fetchAPI<MoatActivationRun>('/market-radar/moat-activation-runs', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.moatActivationRuns });
+      queryClient.invalidateQueries({ queryKey: queryKeys.missionControlRuns });
+      queryClient.invalidateQueries({ queryKey: queryKeys.marketRadarReports });
+    },
+  });
+}
 
 export function useMarketRadarReports(options?: Partial<UseQueryOptions<{ reports: MarketRadarReport[] }>>) {
   return useQuery({

@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { CheckCircle2, AlertTriangle, XCircle, Info, X } from "lucide-react";
+import { createClientId } from "./ids";
 
 type ToastKind = "success" | "warning" | "error" | "info";
 
@@ -38,7 +39,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toast = useCallback<ToastCtx["toast"]>((t) => {
-    const id = Math.random().toString(36).slice(2);
+    const id = createClientId("toast");
     setItems((prev) => [...prev, { ...t, id }]);
     setTimeout(() => dismiss(id), 4500);
   }, [dismiss]);
@@ -52,7 +53,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           return (
             <div
               key={t.id}
-              className={`bg-s-elevated border rounded-md shadow-2xl p-3 flex items-start gap-2.5 ${colorMap[t.kind]}`}
+              className={`bg-s-elevated border rounded-md p-3 flex items-start gap-2.5 ${colorMap[t.kind]}`}
             >
               <Icon size={16} className="mt-0.5 shrink-0" />
               <div className="flex-1 min-w-0">

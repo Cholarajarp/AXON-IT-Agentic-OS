@@ -168,6 +168,7 @@ function scanSecrets(file: SecurityScanFile): SecurityFinding[] {
     if (/masked|example|placeholder|your[-_ ]?key|sk-\*\*\*/i.test(line)) return;
     for (const secret of secretPatterns) {
       secret.pattern.lastIndex = 0;
+      if (secret.id === 'generic-secret-assignment' && isRuntimeSecretReference(line)) continue;
       if (!secret.pattern.test(line)) continue;
       findings.push({
         id: `secret-${secret.id}-${file.path}-${index + 1}`,
@@ -184,6 +185,14 @@ function scanSecrets(file: SecurityScanFile): SecurityFinding[] {
     }
   });
   return findings;
+}
+
+function isRuntimeSecretReference(line: string) {
+  const assignment = line.match(/\b(api[_-]?key|secret|password|token)\s*[:=]\s*([^;,\n]+)/i);
+  if (!assignment) return false;
+  const rhs = assignment[2]?.trim() ?? '';
+  if (!/^(process\.env|import\.meta\.env|Deno\.env\.get\(|Bun\.env\b)/.test(rhs)) return false;
+  return !/['"][A-Za-z0-9_./+=-]{16,}['"]/.test(rhs);
 }
 
 function scanCodeRisks(file: SecurityScanFile): SecurityFinding[] {

@@ -175,7 +175,7 @@ function RunDetail({ run }: { run: MissionControlRun | null }) {
   if (!run) {
     return (
       <Card>
-        <EmptyState icon={<ClipboardCheck size={18} />} title="No mission selected" description="A mission run will show the full IT-company workflow from intake to release gate." />
+        <EmptyState icon={<ClipboardCheck size={18} />} title="No mission selected" description="A mission run will show the full IT service software workflow from intake to release gate." />
       </Card>
     );
   }

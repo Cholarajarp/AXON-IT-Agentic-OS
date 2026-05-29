@@ -53,4 +53,40 @@ describe('market radar routes', () => {
 
     await app.close();
   });
+
+  it('returns a competitive benchmark and creates moat activation runs', async () => {
+    const app = Fastify();
+    await app.register(registerMarketRadarRoutes);
+
+    const benchmarkResponse = await app.inject({
+      method: 'GET',
+      url: '/market-radar/competitive-benchmark',
+    });
+
+    expect(benchmarkResponse.statusCode).toBe(200);
+    const benchmark = benchmarkResponse.json();
+    expect(benchmark.overallScore).toBeGreaterThan(70);
+    expect(benchmark.competitors.map((item: { id: string }) => item.id)).toEqual(
+      expect.arrayContaining(['servicenow-ai-platform', 'github-copilot-coding-agent', 'atlassian-rovo-jsm']),
+    );
+    expect(benchmark.topMoves.length).toBeGreaterThan(2);
+
+    const activationResponse = await app.inject({
+      method: 'POST',
+      url: '/market-radar/moat-activation-runs',
+      payload: { maxMissions: 2 },
+    });
+
+    expect(activationResponse.statusCode).toBe(201);
+    const activation = activationResponse.json();
+    expect(activation.missionControlRuns).toHaveLength(2);
+    expect(activation.missionControlRuns[0].missionControlRunId).toMatch(/^mctl_/);
+    expect(activation.stageGates.length).toBeGreaterThanOrEqual(6);
+    expect(activation.proofArtifacts.map((item: { kind: string }) => item.kind)).toEqual(
+      expect.arrayContaining(['release-pack', 'market-signal']),
+    );
+    expect(activation.riskRegister).toHaveLength(2);
+
+    await app.close();
+  });
 });

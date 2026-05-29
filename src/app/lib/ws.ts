@@ -81,12 +81,12 @@ export function useWebSocket() {
       clearTimeout(reconnectTimeoutRef.current);
     }
 
-    // Exponential backoff with jitter
+    // Exponential backoff with deterministic jitter to avoid synchronized reconnects.
     const baseDelay = 1000; // 1 second
     const maxDelay = 30000; // 30 seconds
     const attempt = reconnectAttemptsRef.current;
     const exponentialDelay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
-    const jitter = Math.random() * 1000; // 0-1 second jitter
+    const jitter = (attempt % 5) * 200;
     const delay = exponentialDelay + jitter;
 
     console.log(`[WS] Reconnecting in ${Math.round(delay / 1000)}s (attempt ${attempt + 1})`);

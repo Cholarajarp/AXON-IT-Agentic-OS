@@ -19,7 +19,7 @@ export function buildWorkspaceCommands(
   branchName: string,
 ): AgentProjectWorkspaceCommand[] {
   const commands: AgentProjectWorkspaceCommand[] = [
-    command('Inspect repository status', 'git status --short', 'low', false),
+    command('Inspect repository status', gitStatusInspectionCommand(), 'low', false),
   ];
   if (project.worktreeMode === 'new-worktree') {
     commands.push(command('Create isolated worktree', `git worktree add ${worktreePath} -b ${branchName}`, 'medium', true));
@@ -202,6 +202,24 @@ export function gate(
 
 function command(label: string, value: string, risk: AgentProjectWorkspaceCommand['risk'], requiresApproval: boolean): AgentProjectWorkspaceCommand {
   return { label, command: value, risk, requiresApproval };
+}
+
+function gitStatusInspectionCommand() {
+  const script = [
+    "const fs=require('node:fs')",
+    "const path=require('node:path')",
+    "const {spawnSync}=require('node:child_process')",
+    "let dir=process.cwd()",
+    "let hasGit=false",
+    "for(;;){if(fs.existsSync(path.join(dir,'.git'))){hasGit=true;break}const next=path.dirname(dir);if(next===dir)break;dir=next}",
+    "if(!hasGit){console.log('No git metadata found; workspace inspection recorded as packaged source.');process.exit(0)}",
+    "const result=spawnSync('git',['status','--short'],{encoding:'utf8'})",
+    "if(result.error){console.error(result.error.message);process.exit(1)}",
+    "process.stdout.write(result.stdout||'clean working tree\\n')",
+    "process.stderr.write(result.stderr||'')",
+    "process.exit(result.status??0)",
+  ].join(';');
+  return `node -e "${script.replaceAll('"', '\\"')}"`;
 }
 
 function inferValidationKind(commandText: string) {

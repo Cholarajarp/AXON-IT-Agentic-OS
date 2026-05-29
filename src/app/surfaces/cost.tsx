@@ -1,22 +1,107 @@
-import { useState } from "react";
-import { TrendingDown, Download, RefreshCw, AlertCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import type { FormEvent, ReactNode } from "react";
+import { TrendingDown, Download, RefreshCw, AlertCircle, PlusCircle, Save } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
-import { Card, CardHeader, PageHeader, Kpi, Button } from "../components/ui/primitives";
-import { useCost } from "../lib/queries";
+import { Card, CardHeader, PageHeader, Kpi, Button, EmptyState } from "../components/ui/primitives";
+import { useCost, useExportCost, useRecordCost, useUpdateCostBudgetPolicy } from "../lib/queries";
+import { useToast } from "../lib/toast";
+
+const inputCls = "w-full rounded-md border border-s-border bg-s-base px-3 py-2 text-[12.5px] text-s-primary outline-none placeholder:text-s-muted focus:border-s-brand";
 
 export function Cost() {
   const { data: costData, isLoading, isError, error, refetch } = useCost();
+  const recordCost = useRecordCost();
+  const updateBudget = useUpdateCostBudgetPolicy();
+  const exportCost = useExportCost();
+  const { toast } = useToast();
   const [range, setRange] = useState("7d");
+  const [ledger, setLedger] = useState({
+    provider: "localMock",
+    model: "mock-small",
+    domain: "Engineering",
+    workflowId: "wf_finops_manual",
+    agentId: "FinOpsAgent",
+    tokensIn: "1200",
+    tokensOut: "350",
+    cost: "0.00",
+    durationMs: "420",
+  });
+  const [budget, setBudget] = useState({
+    monthlyBudgetUsd: "2500",
+    warningThresholdPct: "70",
+    hardStopThresholdPct: "95",
+  });
+
+  useEffect(() => {
+    if (!costData?.budgetPolicy) return;
+    setBudget({
+      monthlyBudgetUsd: String(costData.budgetPolicy.monthlyBudgetUsd),
+      warningThresholdPct: String(costData.budgetPolicy.warningThresholdPct),
+      hardStopThresholdPct: String(costData.budgetPolicy.hardStopThresholdPct),
+    });
+  }, [costData?.budgetPolicy]);
+
+  const handleExport = async () => {
+    try {
+      const bundle = await exportCost.mutateAsync();
+      await navigator.clipboard.writeText(bundle.csv);
+      toast({ kind: "success", title: "Cost package exported", description: `${bundle.records.length} ledger rows copied as CSV.` });
+    } catch (err) {
+      toast({ kind: "error", title: "Export failed", description: err instanceof Error ? err.message : "Unable to export cost package." });
+    }
+  };
+
+  const handleRecordCost = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const cost = Number(ledger.cost);
+    if (!Number.isFinite(cost) || cost < 0) {
+      toast({ kind: "warning", title: "Invalid cost", description: "Enter a non-negative USD amount." });
+      return;
+    }
+
+    try {
+      const result = await recordCost.mutateAsync({
+        provider: ledger.provider,
+        model: ledger.model,
+        domain: ledger.domain || undefined,
+        workflowId: ledger.workflowId || undefined,
+        agentId: ledger.agentId || undefined,
+        tokensIn: Math.max(0, Math.floor(Number(ledger.tokensIn) || 0)),
+        tokensOut: Math.max(0, Math.floor(Number(ledger.tokensOut) || 0)),
+        cost,
+        durationMs: Math.max(0, Math.floor(Number(ledger.durationMs) || 0)),
+      });
+      toast({ kind: "success", title: "Spend recorded", description: `${result.record.provider}/${result.record.model} added to the durable ledger.` });
+    } catch (err) {
+      toast({ kind: "error", title: "Record failed", description: err instanceof Error ? err.message : "Unable to record cost." });
+    }
+  };
+
+  const handleSaveBudget = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    try {
+      const policy = await updateBudget.mutateAsync({
+        monthlyBudgetUsd: Number(budget.monthlyBudgetUsd),
+        warningThresholdPct: Number(budget.warningThresholdPct),
+        hardStopThresholdPct: Number(budget.hardStopThresholdPct),
+      });
+      toast({ kind: "success", title: "Budget policy saved", description: `$${policy.monthlyBudgetUsd.toLocaleString()} monthly cap is active.` });
+    } catch (err) {
+      toast({ kind: "error", title: "Budget save failed", description: err instanceof Error ? err.message : "Unable to save budget policy." });
+    }
+  };
 
   if (isLoading) {
     return (
       <div>
         <PageHeader title="Cost" description="Token spend, model breakdown, and per-workflow economics" />
         <Card>
-          <div className="flex items-center justify-center py-20">
-            <div className="flex flex-col items-center gap-3">
-              <RefreshCw size={24} className="text-s-muted animate-spin" />
-              <span className="text-s-secondary text-[13px]">Loading cost data...</span>
+          <div className="p-5 space-y-3">
+            <div className="h-6 w-48 rounded bg-s-subtle" />
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              {[0, 1, 2, 3].map((item) => (
+                <div key={item} className="h-24 rounded-md bg-s-subtle border border-s-border" />
+              ))}
             </div>
           </div>
         </Card>
@@ -51,6 +136,8 @@ export function Cost() {
   const dailySpend = costData?.dailySpend ?? [];
   const domainBreakdown = costData?.domainBreakdown ?? [];
   const modelBreakdown = costData?.modelBreakdown ?? [];
+  const budgetPolicy = costData?.budgetPolicy;
+  const budgetUsage = budgetPolicy ? Math.min(100, (totalSpend / budgetPolicy.monthlyBudgetUsd) * 100) : 0;
 
   return (
     <div>
@@ -59,14 +146,16 @@ export function Cost() {
         description="Token spend, model breakdown, and per-workflow economics"
         action={
           <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" icon={<Download size={13} />}>Export</Button>
+            <Button variant="secondary" size="sm" icon={<Download size={13} />} onClick={handleExport} disabled={exportCost.isPending}>
+              {exportCost.isPending ? "Exporting" : "Export"}
+            </Button>
             <div className="flex items-center gap-0.5 p-0.5 rounded-md bg-s-subtle border border-s-border">
               {["24h", "7d", "30d", "90d"].map((r) => (
                 <button
                   key={r}
                   onClick={() => setRange(r)}
                   className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
-                    range === r ? "bg-s-surface text-s-primary shadow-sm" : "text-s-secondary hover:text-s-primary"
+                    range === r ? "bg-s-surface text-s-primary" : "text-s-secondary hover:text-s-primary"
                   }`}
                 >
                   {r}
@@ -84,11 +173,85 @@ export function Cost() {
         <Kpi label="Top Model" value={topModel} hint="By total spend" />
       </div>
 
+      <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-4 mb-5">
+        <Card className="overflow-hidden">
+          <CardHeader title="Record model spend" subtitle="Writes to the backend cost ledger and refreshes FinOps metrics" />
+          <form onSubmit={handleRecordCost} className="p-4 grid grid-cols-1 md:grid-cols-6 gap-3">
+            <Field label="Provider">
+              <input value={ledger.provider} onChange={(event) => setLedger((prev) => ({ ...prev, provider: event.target.value }))} className={inputCls} />
+            </Field>
+            <Field label="Model">
+              <input value={ledger.model} onChange={(event) => setLedger((prev) => ({ ...prev, model: event.target.value }))} className={inputCls} />
+            </Field>
+            <Field label="Domain">
+              <input value={ledger.domain} onChange={(event) => setLedger((prev) => ({ ...prev, domain: event.target.value }))} className={inputCls} />
+            </Field>
+            <Field label="Cost USD">
+              <input inputMode="decimal" value={ledger.cost} onChange={(event) => setLedger((prev) => ({ ...prev, cost: event.target.value }))} className={inputCls} />
+            </Field>
+            <Field label="Tokens in">
+              <input inputMode="numeric" value={ledger.tokensIn} onChange={(event) => setLedger((prev) => ({ ...prev, tokensIn: event.target.value }))} className={inputCls} />
+            </Field>
+            <Field label="Tokens out">
+              <input inputMode="numeric" value={ledger.tokensOut} onChange={(event) => setLedger((prev) => ({ ...prev, tokensOut: event.target.value }))} className={inputCls} />
+            </Field>
+            <Field label="Workflow">
+              <input value={ledger.workflowId} onChange={(event) => setLedger((prev) => ({ ...prev, workflowId: event.target.value }))} className={inputCls} />
+            </Field>
+            <Field label="Agent">
+              <input value={ledger.agentId} onChange={(event) => setLedger((prev) => ({ ...prev, agentId: event.target.value }))} className={inputCls} />
+            </Field>
+            <Field label="Duration ms">
+              <input inputMode="numeric" value={ledger.durationMs} onChange={(event) => setLedger((prev) => ({ ...prev, durationMs: event.target.value }))} className={inputCls} />
+            </Field>
+            <div className="md:col-span-3 flex items-end justify-end">
+              <Button variant="primary" icon={<PlusCircle size={14} />} disabled={recordCost.isPending || !ledger.provider || !ledger.model}>
+                {recordCost.isPending ? "Recording" : "Record spend"}
+              </Button>
+            </div>
+          </form>
+        </Card>
+
+        <Card className="overflow-hidden">
+          <CardHeader title="Budget controls" subtitle={costData?.source === "local-durable" ? "Durable local ledger active" : "Database-backed ledger active"} />
+          <form onSubmit={handleSaveBudget} className="p-4 space-y-3">
+            <div className="rounded-md border border-s-border bg-s-subtle p-3">
+              <div className="flex items-center justify-between gap-3 text-[12px]">
+                <span className="text-s-secondary">Current usage</span>
+                <span className="font-mono text-s-primary">{budgetUsage.toFixed(1)}%</span>
+              </div>
+              <div className="mt-2 h-2 rounded-full bg-s-base overflow-hidden">
+                <div className={`h-full rounded-full ${budgetUsage >= 95 ? "bg-s-critical" : budgetUsage >= 70 ? "bg-s-warning" : "bg-s-success"}`} style={{ width: `${budgetUsage}%` }} />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <Field label="Monthly USD">
+                <input inputMode="decimal" value={budget.monthlyBudgetUsd} onChange={(event) => setBudget((prev) => ({ ...prev, monthlyBudgetUsd: event.target.value }))} className={inputCls} />
+              </Field>
+              <Field label="Warn %">
+                <input inputMode="numeric" value={budget.warningThresholdPct} onChange={(event) => setBudget((prev) => ({ ...prev, warningThresholdPct: event.target.value }))} className={inputCls} />
+              </Field>
+              <Field label="Stop %">
+                <input inputMode="numeric" value={budget.hardStopThresholdPct} onChange={(event) => setBudget((prev) => ({ ...prev, hardStopThresholdPct: event.target.value }))} className={inputCls} />
+              </Field>
+            </div>
+            <div className="flex justify-end">
+              <Button variant="secondary" icon={<Save size={14} />} disabled={updateBudget.isPending}>
+                {updateBudget.isPending ? "Saving" : "Save budget"}
+              </Button>
+            </div>
+          </form>
+        </Card>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-5">
         <Card className="lg:col-span-3 overflow-hidden">
           <CardHeader title="Daily Spend by Provider" subtitle={`Last ${range}`} />
           <div className="px-5 pb-5 pt-2 h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
+            {dailySpend.length === 0 ? (
+              <EmptyState icon={<TrendingDown size={18} />} title="No ledger rows yet" description="Record model spend or run workflows to populate provider cost trends." />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
               <BarChart data={dailySpend} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--s-border)" vertical={false} />
                 <XAxis
@@ -109,24 +272,27 @@ export function Cost() {
                     border: '1px solid var(--s-border)',
                     borderRadius: '8px',
                     fontSize: '12px',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                   }}
                   labelStyle={{ color: 'var(--s-text-primary)', fontWeight: 500 }}
                   formatter={(value: number, name: string) => [`$${value}`, name.charAt(0).toUpperCase() + name.slice(1)]}
                 />
-                <Bar dataKey="anthropic" stackId="a" fill="#00C8FF" radius={[0, 0, 0, 0]} name="Anthropic" />
-                <Bar dataKey="openai" stackId="a" fill="#10A37F" name="OpenAI" />
-                <Bar dataKey="gemini" stackId="a" fill="#8B5CF6" name="Gemini" />
-                <Bar dataKey="local" stackId="a" fill="#F5A623" radius={[3, 3, 0, 0]} name="Local" />
+                <Bar dataKey="anthropic" stackId="a" fill="#0A84FF" radius={[0, 0, 0, 0]} name="Anthropic" />
+                <Bar dataKey="openai" stackId="a" fill="#30D158" name="OpenAI" />
+                <Bar dataKey="gemini" stackId="a" fill="#BF5AF2" name="Gemini" />
+                <Bar dataKey="local" stackId="a" fill="#FF9F0A" radius={[3, 3, 0, 0]} name="Local" />
               </BarChart>
-            </ResponsiveContainer>
+              </ResponsiveContainer>
+            )}
           </div>
         </Card>
 
         <Card className="lg:col-span-2 overflow-hidden">
           <CardHeader title="Spend by Domain" subtitle="Distribution" />
           <div className="px-5 pb-5 pt-2 h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
+            {domainBreakdown.length === 0 ? (
+              <EmptyState icon={<TrendingDown size={18} />} title="No domain spend" description="Add a domain when recording ledger entries to see allocation." />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={domainBreakdown}
@@ -159,7 +325,8 @@ export function Cost() {
                   formatter={(value) => <span className="text-s-secondary text-[11px]">{value}</span>}
                 />
               </PieChart>
-            </ResponsiveContainer>
+              </ResponsiveContainer>
+            )}
           </div>
         </Card>
       </div>
@@ -189,7 +356,13 @@ export function Cost() {
               </tr>
             </thead>
             <tbody>
-              {modelBreakdown.map((m) => {
+              {modelBreakdown.length === 0 ? (
+                <tr>
+                  <td className="px-5 py-8 text-center text-[12.5px] text-s-secondary" colSpan={5}>
+                    No model usage recorded yet.
+                  </td>
+                </tr>
+              ) : modelBreakdown.map((m) => {
                 const share = totalSpend > 0 ? (m.cost / totalSpend * 100) : 0;
                 return (
                   <tr key={m.model} className="border-b border-s-border last:border-0 hover:bg-s-hover">
@@ -218,6 +391,15 @@ export function Cost() {
         </div>
       </Card>
     </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="block min-w-0">
+      <span className="label-mono mb-1 block">{label}</span>
+      {children}
+    </label>
   );
 }
 

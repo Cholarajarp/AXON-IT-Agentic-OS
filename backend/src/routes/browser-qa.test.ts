@@ -28,6 +28,7 @@ describe('browser qa routes', () => {
     const body = response.json();
     expect(body.score).toBeGreaterThanOrEqual(85);
     expect(body.status).toBe('release-ready');
+    expect(body.evidenceMode).toBe('html-snapshot');
     expect(body.journeys[0].status).toBe('pass');
     expect(body.releaseEvidence).toEqual(expect.arrayContaining([expect.stringContaining('browser smoke result')]));
     expect(body.artifacts.map((artifact: { kind: string }) => artifact.kind)).toEqual(
@@ -56,6 +57,7 @@ describe('browser qa routes', () => {
     const body = response.json();
     expect(body.status).toBe('blocked');
     expect(body.preview.reachable).toBe(false);
+    expect(body.evidenceMode).toBe('live-url');
     expect(body.nextActions).toEqual(expect.arrayContaining([expect.stringContaining('Start or redeploy')]));
 
     await app.close();

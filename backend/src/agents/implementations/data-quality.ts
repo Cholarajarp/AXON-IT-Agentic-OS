@@ -1,7 +1,7 @@
 import type { AgentExecutionInput } from '../types.js';
-import { SimulatedAgent } from './base.js';
+import { DeterministicAgent } from './base.js';
 
-export class DataQualityAgent extends SimulatedAgent {
+export class DataQualityAgent extends DeterministicAgent {
   name = 'DataQualityAgent';
   description = 'Designs data validation, row-count checks, drift detection, and post-migration quality gates';
   version = '1.0.0';
@@ -19,6 +19,6 @@ export class DataQualityAgent extends SimulatedAgent {
     };
   }
 
-  protected getSimulatedDurationMs() { return 900 + Math.random() * 400; }
-  protected getSimulatedCost() { return 0.003 + Math.random() * 0.002; }
+  protected estimateDurationMs() { return 1100; }
+  protected estimateCost() { return 0.004; }
 }

@@ -1,3 +1,5 @@
+import type { Evidence } from '../store';
+
 export type { Workflow, AgentInstance, Approval, Policy, Evidence, Incident, Alert } from '../store';
 export interface ModelRoute {
   provider: 'anthropic' | 'openai' | 'google' | 'bedrock' | 'vertexai' | 'ollama' | 'local';
@@ -196,6 +198,14 @@ export interface ModelEvaluationReport {
   }>;
 }
 
+export interface ModelEvaluationRunResponse extends ModelEvaluationReport {
+  run: {
+    id: string;
+    tenantId: string;
+    includeAdversarial: boolean;
+  };
+}
+
 export interface SkillPack {
   id: string;
   name: string;
@@ -222,6 +232,71 @@ export interface SkillPackInput {
   riskLevel?: SkillPack['riskLevel'];
 }
 
+export interface PolicyInput {
+  name: string;
+  type: 'Tool' | 'Data' | 'Approval' | 'Model' | 'Cost' | 'Environment';
+  scope?: string;
+  version?: string;
+  status?: 'ACTIVE' | 'DRAFT' | 'DEPRECATED';
+  regoSource?: string;
+  tenantId?: string;
+}
+
+export interface PolicySimulationInput {
+  agent?: string;
+  tenantId?: string;
+  sensitivityLevel?: 'public' | 'internal' | 'confidential' | 'restricted';
+  sovereignMode?: boolean;
+  approvalApproved?: boolean;
+}
+
+export interface PolicySimulationResult {
+  input: Required<PolicySimulationInput>;
+  decision: {
+    allowed: boolean;
+    matched: string[];
+    reasons: string[];
+    requireApproval: boolean;
+    requireSovereign: boolean;
+  };
+  evaluatedAt: string;
+}
+
+export interface CostBudgetPolicy {
+  monthlyBudgetUsd: number;
+  warningThresholdPct: number;
+  hardStopThresholdPct: number;
+  updatedAt: string;
+}
+
+export interface CostLedgerEntry {
+  id: string;
+  workflowId?: string;
+  agentId?: string;
+  model: string;
+  provider: string;
+  tokensIn: number;
+  tokensOut: number;
+  cost: number;
+  durationMs: number;
+  domain?: string;
+  tenantId: string;
+  createdAt: string;
+}
+
+export interface CostLedgerInput {
+  workflowId?: string;
+  agentId?: string;
+  model: string;
+  provider: string;
+  tokensIn?: number;
+  tokensOut?: number;
+  cost: number;
+  durationMs?: number;
+  domain?: string;
+  tenantId?: string;
+}
+
 export interface CostSummary {
   totalSpend: number;
   avgPerWorkflow: number;
@@ -230,6 +305,63 @@ export interface CostSummary {
   dailySpend: { date: string; anthropic: number; openai: number; gemini: number; local: number }[];
   domainBreakdown: { domain: string; spend: number; color: string }[];
   modelBreakdown: { model: string; tokens: number; cost: number }[];
+  budgetPolicy?: CostBudgetPolicy;
+  source?: 'database' | 'local-durable';
+}
+
+export interface CostExportPackage {
+  generatedAt: string;
+  summary: CostSummary;
+  budgetPolicy: CostBudgetPolicy;
+  records: CostLedgerEntry[];
+  csv: string;
+}
+
+export interface EvidenceInput {
+  controlId: string;
+  framework: string;
+  description: string;
+  status?: 'SATISFIED' | 'PARTIAL' | 'MISSING';
+  workflowId?: string;
+  agentId?: string;
+  tenantId?: string;
+}
+
+export interface EvidenceExportPackage {
+  generatedAt: string;
+  recordCount: number;
+  byFramework: Record<string, { total: number; satisfied: number; partial: number; missing: number }>;
+  records: Evidence[];
+  manifest: Array<{ id: string; controlId: string; framework: string; status: string; generatedAt: string }>;
+}
+
+export interface AgentPipelineProbeInput {
+  workflowId?: string;
+  taskId?: string;
+  taskName?: string;
+  description?: string;
+  tenantId?: string;
+  input?: Record<string, unknown>;
+}
+
+export interface AgentPipelineProbeResult {
+  executionId: string;
+  workflowId: string;
+  taskId: string;
+  agentName: string;
+  tenantId: string;
+  startedAt: number;
+  steps: Array<{
+    step: string;
+    order: number;
+    passed: boolean;
+    durationMs: number;
+    message?: string;
+    metadata?: Record<string, unknown>;
+  }>;
+  aborted: boolean;
+  abortReason?: string;
+  metadata: Record<string, unknown>;
 }
 
 export interface ExecutiveMetrics {
@@ -239,6 +371,13 @@ export interface ExecutiveMetrics {
   autoResolved: number;
   weeklyVelocity: { week: string; features: number; automated: number }[];
   risks: { id: string; title: string; severity: 'HIGH' | 'MEDIUM' | 'LOW' | 'CRITICAL'; owner: string; status: string }[];
+  insight: {
+    headline: string;
+    summary: string;
+    wins: string[];
+    attention: string[];
+    signals: Array<{ label: string; value: string; tone: 'success' | 'warning' | 'critical' | 'neutral' }>;
+  };
 }
 
 export interface MemoryRecord {
@@ -326,6 +465,27 @@ export type ServiceCategory =
   | 'support'
   | 'advisory';
 
+export type BuilderMode = 'saas-app' | 'internal-tool' | 'ai-agent' | 'workflow-automation' | 'api-service' | 'landing-to-app';
+
+export type AppFeatureChip =
+  | 'auth'
+  | 'database'
+  | 'storage'
+  | 'realtime'
+  | 'payments'
+  | 'maps'
+  | 'email'
+  | 'ai-chat'
+  | 'vision'
+  | 'voice'
+  | 'admin'
+  | 'analytics'
+  | 'search'
+  | 'workflow'
+  | 'mobile'
+  | 'browser-qa'
+  | 'deploy';
+
 export interface ServiceCatalogTemplate {
   id: string;
   name: string;
@@ -343,12 +503,145 @@ export interface ProductRequestInput {
   goal: string;
   tenantId?: string;
   customerName?: string;
+  builderMode?: BuilderMode;
+  featureChips?: AppFeatureChip[];
+  designStyle?: 'enterprise' | 'consumer' | 'developer-tool' | 'marketplace' | 'ops-console';
+  dataSensitivity?: 'public' | 'internal' | 'confidential' | 'restricted';
+  deployTarget?: 'vercel' | 'replit' | 'cloud-run' | 'kubernetes' | 'docker-compose' | 'static';
+  attachments?: Array<{ name: string; kind: 'screenshot' | 'doc' | 'url' | 'schema' | 'api-spec'; summary: string }>;
   constraints?: string[];
   budgetUsd?: number;
   timelineDays?: number;
   compliance?: string[];
   targetUsers?: string[];
   integrations?: string[];
+}
+
+export interface BuilderScreenSpec {
+  id: string;
+  name: string;
+  route: string;
+  persona: string;
+  purpose: string;
+  layout: string;
+  components: string[];
+  interactions: string[];
+  states: string[];
+  acceptanceCriteria: string[];
+}
+
+export interface BuilderDataEntity {
+  name: string;
+  purpose: string;
+  fields: Array<{ name: string; type: string; required: boolean; pii: boolean }>;
+  relationships: string[];
+  rlsPolicy: string;
+}
+
+export interface BuilderApiEndpoint {
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  path: string;
+  purpose: string;
+  auth: 'public' | 'user' | 'admin' | 'service';
+  requestSchema: string[];
+  responseSchema: string[];
+  tests: string[];
+}
+
+export interface GeneratedCodeFile {
+  path: string;
+  language: 'tsx' | 'ts' | 'sql' | 'json' | 'md' | 'yaml' | 'dockerfile';
+  purpose: string;
+  content: string;
+}
+
+export interface ProductQualityGate {
+  id: string;
+  title: string;
+  status: 'pass' | 'warn' | 'block';
+  score: number;
+  evidence: string[];
+  nextAction: string;
+}
+
+export interface UiUxBlueprint {
+  appType: 'web-app' | 'mobile-app' | 'desktop-app' | 'rag-agent' | 'agentic-platform' | 'api-service';
+  designBar: string;
+  visualRules: string[];
+  tokenSystem: {
+    light: Record<string, string>;
+    dark: Record<string, string>;
+    typeScale: string[];
+    spacingScale: string[];
+    radiusScale: string[];
+  };
+  layoutSystem: {
+    navigation: string;
+    contentModel: string;
+    responsiveRules: string[];
+  };
+  screenRecipes: Array<{
+    screenId: string;
+    route: string;
+    pattern: string;
+    primaryComponents: string[];
+    loadingState: string;
+    emptyState: string;
+    errorState: string;
+    accessibilityChecks: string[];
+  }>;
+  componentRecipes: Array<{
+    name: string;
+    purpose: string;
+    states: string[];
+    responsiveRules: string[];
+    accessibility: string[];
+  }>;
+  interactionRules: string[];
+  performanceRules: string[];
+  qualityChecks: Array<{ id: string; title: string; status: ProductQualityGate['status']; evidence: string[] }>;
+}
+
+export interface RagSystemPlan {
+  enabled: boolean;
+  useCases: string[];
+  ingestionPipeline: string[];
+  chunkingStrategy: string;
+  embeddingModel: string;
+  vectorStore: string;
+  retrievalStrategy: string[];
+  citationPolicy: string;
+  evaluationPlan: string[];
+  safetyControls: string[];
+}
+
+export interface MlSystemPlan {
+  enabled: boolean;
+  modelRoutes: Array<{ task: string; route: 'fast' | 'balanced' | 'quality' | 'sovereign'; rationale: string }>;
+  dataPipelines: string[];
+  evaluationMetrics: string[];
+  guardrails: string[];
+  feedbackLoops: string[];
+}
+
+export interface AgenticBuildPlan {
+  operatingModel: 'single-agent' | 'multi-agent-supervised' | 'multi-agent-autonomous';
+  team: Array<{
+    role: string;
+    responsibilities: string[];
+    artifacts: string[];
+    qualityGate: string;
+  }>;
+  workflow: Array<{
+    phase: string;
+    owner: string;
+    inputs: string[];
+    outputs: string[];
+    doneWhen: string[];
+  }>;
+  collaborationProtocol: string[];
+  humanGates: string[];
+  failureModes: Array<{ mode: string; detection: string; recovery: string }>;
 }
 
 export interface ServiceBlueprint {
@@ -403,6 +696,79 @@ export interface ServiceBlueprint {
   deliveryBrief: string;
   engineeringPlan: string;
   approvalRequired: boolean;
+  builder: {
+    mode: BuilderMode;
+    featureChips: AppFeatureChip[];
+    designStyle: NonNullable<ProductRequestInput['designStyle']>;
+    dataSensitivity: NonNullable<ProductRequestInput['dataSensitivity']>;
+    deployTarget: NonNullable<ProductRequestInput['deployTarget']>;
+    promptQualityScore: number;
+    enhancedPrompt: string;
+    followUpQuestions: Array<{ id: string; question: string; whyItMatters: string; defaultAnswer: string }>;
+    competitorBaseline: Array<{ platform: 'Lovable' | 'Replit' | 'Google AI Studio'; capability: string; axonResponse: string }>;
+  };
+  appMap: Array<{ route: string; name: string; purpose: string; primaryActions: string[]; dataNeeded: string[] }>;
+  screens: BuilderScreenSpec[];
+  componentInventory: Array<{ name: string; kind: 'layout' | 'input' | 'data-display' | 'feedback' | 'navigation'; reusedFromSystem: boolean; notes: string }>;
+  dataModel: BuilderDataEntity[];
+  apiPlan: BuilderApiEndpoint[];
+  authPlan: {
+    provider: 'email-password' | 'oauth-sso' | 'magic-link' | 'service-token';
+    roles: Array<{ role: string; permissions: string[] }>;
+    policies: string[];
+  };
+  aiPlan: {
+    modelRoute: string;
+    aiFeatures: string[];
+    guardrails: string[];
+    evals: string[];
+    memory: string[];
+  };
+  designSystem: {
+    palette: string[];
+    typography: string[];
+    spacing: string;
+    accessibility: string[];
+    responsiveRules: string[];
+  };
+  uiUxBlueprint: UiUxBlueprint;
+  ragPlan: RagSystemPlan;
+  mlPlan: MlSystemPlan;
+  agenticBuildPlan: AgenticBuildPlan;
+  generatedFiles: GeneratedCodeFile[];
+  qualityGates: ProductQualityGate[];
+  deploymentPlan: {
+    target: NonNullable<ProductRequestInput['deployTarget']>;
+    environments: string[];
+    envVars: string[];
+    commands: string[];
+    rollback: string[];
+    observability: string[];
+  };
+  previewSpec: {
+    status: 'draft' | 'interactive' | 'blocked';
+    primaryFlow: string[];
+    testUsers: string[];
+    emptyStates: string[];
+    loadingStates: string[];
+    errorStates: string[];
+  };
+  ownership: {
+    exportMode: 'repo-owned' | 'portable-zip' | 'managed';
+    lockInRisk: 'low' | 'medium' | 'high';
+    handoffArtifacts: string[];
+  };
+  agenticActivation?: {
+    missionControlRunId: string;
+    agenticMeshBlueprintId: string;
+    releaseMissionId: string;
+    browserQaReportId: string;
+    blackboardId: string;
+    trustRecordIds: string[];
+    status: 'ready' | 'needs-review' | 'blocked';
+    score: number;
+    activatedAt: string;
+  };
   status: 'draft' | 'approved' | 'ready-for-execution' | 'executing';
   execution?: {
     workflowId: string;
@@ -411,6 +777,12 @@ export interface ServiceBlueprint {
     startedAt: string;
   };
   createdAt: string;
+}
+
+export interface ProductAgenticLaunchResult {
+  blueprint: ServiceBlueprint;
+  missionControlRun: MissionControlRun;
+  message: string;
 }
 
 export type DatabaseEngine = 'postgresql' | 'mysql' | 'sqlite' | 'sqlserver';
@@ -613,7 +985,181 @@ export type ServiceRequestCategory = 'incident' | 'access' | 'change' | 'deploym
 
 export type ServiceRequestPriority = 'P0' | 'P1' | 'P2' | 'P3';
 
-export type ServiceRequestStatus = 'intake' | 'triaged' | 'approved' | 'executing' | 'resolved';
+export type ServiceRequestStatus = 'intake' | 'triaged' | 'approved' | 'executing' | 'monitoring' | 'resolved' | 'closed';
+
+export type ServiceLifecycleStageStatus = 'pending' | 'active' | 'blocked' | 'completed' | 'breached';
+
+export type ServiceCriticality = 'low' | 'medium' | 'high' | 'mission-critical';
+
+export type ConfigurationItemType =
+  | 'application'
+  | 'api'
+  | 'database'
+  | 'cloud-account'
+  | 'pipeline'
+  | 'security-control'
+  | 'model-endpoint'
+  | 'network'
+  | 'vendor-service'
+  | 'business-process';
+
+export interface ServiceOperationsKernel {
+  customer: {
+    id: string;
+    name: string;
+    segment: 'internal' | 'smb' | 'mid-market' | 'enterprise' | 'regulated-enterprise';
+    tier: 'standard' | 'premium' | 'mission-critical';
+    region: string;
+    serviceOwner: string;
+    successManager: string;
+  };
+  contract: {
+    id: string;
+    name: string;
+    coverage: '8x5' | '16x5' | '24x7';
+    monthlyRecurringUsd: number;
+    serviceCreditRatePct: number;
+    renewalDate: string;
+    obligations: string[];
+  };
+  service: {
+    id: string;
+    name: string;
+    type: ServiceRequestCategory;
+    environment: 'dev' | 'staging' | 'production';
+    criticality: ServiceCriticality;
+    serviceWindow: string;
+    ownerAgent: string;
+    serviceLevel: {
+      availabilityTargetPct: number;
+      responseTargetMinutes: number;
+      resolutionTargetHours: number;
+      errorBudgetMinutesMonthly: number;
+    };
+  };
+  cmdb: Array<{
+    id: string;
+    name: string;
+    type: ConfigurationItemType;
+    criticality: ServiceCriticality;
+    ownerAgent: string;
+    health: 'healthy' | 'at-risk' | 'degraded' | 'unknown';
+    dependencies: string[];
+    monitors: string[];
+    backupPolicy: string;
+    dataClass: 'public' | 'internal' | 'confidential' | 'restricted';
+    rtoMinutes: number;
+    rpoMinutes: number;
+  }>;
+  serviceGraph: Array<{
+    from: string;
+    to: string;
+    relationship: 'depends-on' | 'feeds' | 'protects' | 'deploys' | 'observes';
+    risk: 'low' | 'medium' | 'high' | 'critical';
+  }>;
+  slaClock: {
+    openedAt: string;
+    responseDueAt: string;
+    resolutionDueAt: string;
+    responseBreached: boolean;
+    resolutionBreached: boolean;
+    minutesToResponseDue: number;
+    minutesToResolutionDue: number;
+    burnRate: number;
+    state: 'inside-sla' | 'at-risk' | 'breached';
+  };
+  lifecycle: Array<{
+    id: string;
+    name: string;
+    status: ServiceLifecycleStageStatus;
+    ownerAgent: string;
+    dueAt: string;
+    startedAt?: string;
+    completedAt?: string;
+    exitCriteria: string[];
+    evidenceRequired: string[];
+    evidenceProvided: string[];
+    blockers: string[];
+    nextAction: string;
+  }>;
+  incidentCommand: {
+    commander: string;
+    severity: ServiceRequestPriority;
+    bridge: string;
+    customerImpact: string;
+    blastRadius: string[];
+    stakeholderCadence: string;
+    timeline: Array<{ at: string; event: string; evidence: string[] }>;
+  };
+  changeControl: {
+    changeId: string;
+    type: 'standard' | 'normal' | 'emergency';
+    risk: 'low' | 'medium' | 'high' | 'critical';
+    cabRequired: boolean;
+    approvals: Array<{ approver: string; status: 'pending' | 'approved' | 'rejected'; reason: string }>;
+    deploymentWindow: string;
+    rollbackPlan: string[];
+    policyDecision: 'allow' | 'requires-approval' | 'block';
+  };
+  remediation: {
+    mode: 'manual' | 'supervised-agent' | 'auto-remediation';
+    actions: Array<{ order: number; action: string; ownerAgent: string; risk: 'low' | 'medium' | 'high' | 'critical'; reversible: boolean }>;
+    automations: string[];
+    safeguards: string[];
+    approvalGates: string[];
+  };
+  release: {
+    releaseId: string;
+    strategy: 'no-release' | 'rolling' | 'blue-green' | 'canary' | 'rollback-only';
+    environments: string[];
+    smokeTests: string[];
+    rollbackTrigger: string;
+    deploymentArtifacts: string[];
+  };
+  problemManagement: {
+    problemId: string;
+    knownError: string;
+    rootCauseHypotheses: string[];
+    preventionBacklog: Array<{ title: string; ownerAgent: string; priority: ServiceRequestPriority }>;
+    recurrenceRisk: 'low' | 'medium' | 'high';
+  };
+  financial: {
+    estimatedRevenueAtRiskUsd: number;
+    serviceCreditExposureUsd: number;
+    engineeringCostUsd: number;
+    marginImpactUsd: number;
+    invoiceNote: string;
+  };
+  qbr: {
+    narrative: string;
+    valueMetrics: Array<{ label: string; value: string; evidence: string[] }>;
+    risksToReview: string[];
+    renewalSignals: string[];
+  };
+  evidencePack: {
+    artifactId?: string;
+    trustRecordId?: string;
+    coveragePct: number;
+    missing: string[];
+    ledgerControls: string[];
+    exportReady: boolean;
+  };
+  integrations: Array<{
+    system: 'ServiceNow' | 'Jira Service Management' | 'GitHub' | 'Slack' | 'Teams' | 'PagerDuty' | 'Datadog' | 'AWS' | 'Azure' | 'GCP';
+    action: string;
+    status: 'planned' | 'ready' | 'needs-config';
+    payload: Record<string, unknown>;
+  }>;
+  automationSafety: {
+    maxAutonomy: 'recommend-only' | 'draft-and-approve' | 'execute-with-approval' | 'execute-low-risk';
+    requireHumanApprovalFor: string[];
+    forbiddenActions: string[];
+    toolScopes: string[];
+  };
+  score: number;
+  maturity: 'intake-only' | 'controlled' | 'operational' | 'enterprise-grade';
+  nextBestActions: string[];
+}
 
 export interface ServiceDeskTicket {
   id: string;
@@ -638,12 +1184,63 @@ export interface ServiceDeskTicket {
   customerUpdates: Array<{ audience: 'requester' | 'stakeholders' | 'executive'; message: string }>;
   risks: Array<{ level: 'low' | 'medium' | 'high' | 'critical'; description: string; mitigation: string }>;
   evidenceRequired: string[];
+  evidenceProvided: Array<{
+    id: string;
+    stageId?: string;
+    evidence: string;
+    artifactId?: string;
+    verifiedBy: string;
+    status: 'satisfied' | 'partial' | 'blocked';
+    createdAt: string;
+  }>;
   automationPlan: string;
+  kernel: ServiceOperationsKernel;
+  linkedArtifacts: string[];
+  trustRecordIds: string[];
   createdAt: string;
   updatedAt: string;
 }
 
-export type ManagedServiceTowerCategory = 'cloud-ops' | 'application-support' | 'database-ops' | 'security-ops' | 'devops' | 'data-ai' | 'quality-engineering' | 'finops';
+export interface ServiceOperationsDashboard {
+  generatedAt: string;
+  totalTickets: number;
+  activeTickets: number;
+  p0Tickets: number;
+  breachedTickets: number;
+  averageKernelScore: number;
+  averageEvidenceCoveragePct: number;
+  cmdbItems: number;
+  revenueAtRiskUsd: number;
+  serviceCreditExposureUsd: number;
+  lifecycleCompletionPct: number;
+  topServices: Array<{ service: string; tickets: number; highestPriority: ServiceRequestPriority; revenueAtRiskUsd: number }>;
+  controlGaps: string[];
+  nextActions: string[];
+}
+
+export interface ServiceDeskActivationResult {
+  ticket: ServiceDeskTicket;
+  artifactId: string;
+  trustRecordId: string;
+  nextActions: string[];
+}
+
+export type ManagedServiceTowerCategory =
+  | 'cloud-ops'
+  | 'application-support'
+  | 'database-ops'
+  | 'security-ops'
+  | 'devops'
+  | 'data-ai'
+  | 'quality-engineering'
+  | 'finops'
+  | 'service-integration'
+  | 'sovereign-cloud'
+  | 'network-ops'
+  | 'workplace-ops'
+  | 'enterprise-apps'
+  | 'ot-iot-ops'
+  | 'business-process-ops';
 
 export type ManagedServiceCoverage = '8x5' | '16x5' | '24x7';
 
@@ -681,7 +1278,19 @@ export interface ManagedServiceAccount {
   cmdbSeed: Array<{
     id: string;
     name: string;
-    type: 'application' | 'database' | 'cloud-account' | 'pipeline' | 'security-control' | 'model-endpoint';
+    type:
+      | 'application'
+      | 'database'
+      | 'cloud-account'
+      | 'pipeline'
+      | 'security-control'
+      | 'model-endpoint'
+      | 'network'
+      | 'workplace'
+      | 'erp-system'
+      | 'ot-system'
+      | 'vendor-service'
+      | 'business-process';
     ownerAgent: string;
     criticality: ManagedServiceCriticality;
     dependencies: string[];
@@ -723,6 +1332,127 @@ export interface ManagedServiceAccount {
     mitigation: string;
   }>;
   createdAt: string;
+}
+
+export type ITGiantId = 'tcs' | 'accenture' | 'infosys' | 'wipro' | 'hcltech' | 'cognizant' | 'capgemini';
+
+export interface ITGiantBenchmark {
+  id: ITGiantId;
+  name: string;
+  currentEdge: string;
+  weakSpot: string;
+  axonCounter: string;
+  sourceUrl: string;
+  serviceSignals: string[];
+}
+
+export interface ManagedServiceCapabilityBenchmark {
+  id: string;
+  title: string;
+  marketBar: string;
+  competitorLeaders: string[];
+  requiredTowerCategories: ManagedServiceTowerCategory[];
+  axonProof: string[];
+  score: number;
+  targetScore: number;
+  gap: string;
+  improvementMove: string;
+  commercialImpact: string;
+}
+
+export interface ManagedServiceOfferLane {
+  id: string;
+  title: string;
+  buyer: string;
+  winCondition: string;
+  requiredCapabilities: string[];
+  proofRequired: string[];
+  pricingModel: 'retainer' | 'outcome-based' | 'hybrid' | 'consumption';
+  score: number;
+}
+
+export interface ITGiantReadinessReport {
+  id: string;
+  generatedAt: string;
+  accountId?: string;
+  customerName?: string;
+  status: 'behind-giants' | 'credible-challenger' | 'giant-grade' | 'beyond-giants';
+  score: number;
+  thesis: string;
+  competitors: ITGiantBenchmark[];
+  capabilities: ManagedServiceCapabilityBenchmark[];
+  serviceGaps: Array<{
+    id: string;
+    severity: 'medium' | 'high' | 'critical';
+    title: string;
+    whyItMatters: string;
+    fix: string;
+    ownerTower: ManagedServiceTowerCategory;
+  }>;
+  offerLanes: ManagedServiceOfferLane[];
+  topMoves: Array<{
+    order: number;
+    capabilityId: string;
+    move: string;
+    expectedLift: number;
+  }>;
+  sourceNotes: string[];
+}
+
+export interface ManagedServiceTransformationRun {
+  id: string;
+  reportId: string;
+  accountId?: string;
+  generatedAt: string;
+  status: 'created' | 'in-progress';
+  tactic: string;
+  summary: string;
+  progress: {
+    score: number;
+    completedGates: number;
+    totalGates: number;
+  };
+  missionControlRuns: Array<{
+    capabilityId: string;
+    capabilityTitle: string;
+    missionControlRunId: string;
+    releaseMissionId: string;
+    status: string;
+    score: number;
+    proof: string[];
+  }>;
+  stageGates: Array<{
+    id: string;
+    title: string;
+    ownerAgent: string;
+    status: 'pass' | 'warn' | 'block' | 'pending';
+    score: number;
+    evidence: string[];
+    nextAction: string;
+  }>;
+  proofArtifacts: Array<{
+    id: string;
+    name: string;
+    kind: string;
+    uri: string;
+    sha256: string;
+    source: string;
+  }>;
+  riskRegister: Array<{
+    id: string;
+    severity: 'medium' | 'high' | 'critical';
+    title: string;
+    mitigation: string;
+    ownerAgent: string;
+  }>;
+  commercialPack: {
+    offerName: string;
+    buyerPromise: string;
+    pricingModel: ManagedServiceOfferLane['pricingModel'];
+    boardMetrics: string[];
+    first90Days: string[];
+  };
+  nextReviewAt: string;
 }
 
 export type SkillDomain = 'product' | 'architecture' | 'frontend' | 'backend' | 'database' | 'devops' | 'security' | 'sre' | 'qa' | 'data-ai' | 'finops' | 'customer-success';
@@ -899,6 +1629,87 @@ export interface CompanyOperatingMission {
   managedService: ManagedServiceAccount;
   productBlueprint: ServiceBlueprint;
   initialTickets: ServiceDeskTicket[];
+  axonIntegration: {
+    status: 'planned' | 'activated' | 'blocked';
+    connectedSurfaces: string[];
+    productBlueprintId: string;
+    workforceControlPlaneId: string;
+    skillPlanId: string;
+    managedServiceAccountId: string;
+    serviceDeskTicketIds: string[];
+    missionControlRunId?: string;
+    agenticMeshBlueprintId?: string;
+    releaseMissionId?: string;
+    browserQaReportId?: string;
+    blackboardId?: string;
+    trustRecordIds: string[];
+    score?: number;
+    activatedAt?: string;
+  };
+  enterpriseScore: {
+    overall: number;
+    operatingModel: number;
+    integration: number;
+    governance: number;
+    knowledge: number;
+    automation: number;
+    customerTrust: number;
+    gaps: string[];
+  };
+  knowledgeFabric: {
+    permissionModel: string;
+    citationPolicy: string;
+    freshnessSla: string;
+    retrievalModes: string[];
+    sources: Array<{
+      system: string;
+      data: string;
+      syncMode: 'synced-index' | 'federated-realtime' | 'event-stream';
+      owner: string;
+      accessControl: string;
+    }>;
+  };
+  integrationFabric: Array<{
+    system: string;
+    domain: 'identity' | 'work' | 'knowledge' | 'engineering' | 'service' | 'finance' | 'security' | 'observability' | 'customer';
+    connectorType: 'synced' | 'federated' | 'workflow' | 'event' | 'identity' | 'mcp';
+    dataPolicy: string;
+    actionsEnabled: string[];
+    evidence: string[];
+  }>;
+  valueStreams: Array<{
+    name: string;
+    objective: string;
+    intakeChannels: string[];
+    systemsOfRecord: string[];
+    automationLoop: Array<'observe' | 'triage' | 'plan' | 'act' | 'verify' | 'learn'>;
+    humanGates: string[];
+    kpis: string[];
+    axonSurfaces: string[];
+  }>;
+  governanceControls: Array<{
+    control: string;
+    framework: string;
+    enforcement: string;
+    owner: string;
+    evidence: string[];
+    blocksWhen: string;
+  }>;
+  decisionRights: Array<{
+    decision: string;
+    owner: string;
+    autonomy: 'autonomous' | 'supervised' | 'human-approval';
+    policy: string;
+    escalation: string;
+    evidence: string[];
+  }>;
+  operatingCadence: Array<{
+    cadence: 'real-time' | 'daily' | 'weekly' | 'monthly' | 'quarterly';
+    ritual: string;
+    owners: string[];
+    inputs: string[];
+    outputs: string[];
+  }>;
   portfolio: Array<{
     horizon: '0-30 days' | '31-90 days' | '91-180 days' | '181-365 days';
     theme: string;
@@ -1208,6 +2019,8 @@ export type BrowserJourneyStatus = 'pass' | 'warn' | 'fail' | 'skipped';
 
 export type BrowserDeviceProfile = 'desktop' | 'tablet' | 'mobile';
 
+export type BrowserQaEvidenceMode = 'live-url' | 'html-snapshot' | 'generated-fallback';
+
 export type ValidationEvidenceKind = 'typecheck' | 'unit' | 'integration' | 'build' | 'e2e' | 'security' | 'accessibility';
 
 export type ValidationEvidenceStatus = 'pass' | 'warn' | 'fail' | 'planned';
@@ -1233,6 +2046,7 @@ export interface BrowserQaReport {
   name: string;
   releaseGoal: string;
   targetUrl?: string;
+  evidenceMode: BrowserQaEvidenceMode;
   status: BrowserQaStatus;
   score: number;
   summary: string;
@@ -1384,6 +2198,103 @@ export interface MarketRadarLaunch {
   releaseMissionId: string;
   status: string;
   score: number;
+}
+
+export type CompetitorCategory = 'itsm-ai' | 'software-agent' | 'agent-platform' | 'governance' | 'observability';
+
+export interface CompetitorProfile {
+  id: string;
+  name: string;
+  category: CompetitorCategory;
+  currentEdge: string;
+  weakSpot: string;
+  axonCounter: string;
+  sourceUrl: string;
+}
+
+export interface CompetitiveCapability {
+  id: string;
+  title: string;
+  area: CapabilityArea;
+  marketBar: string;
+  competitorLeaders: string[];
+  axonProof: string[];
+  score: number;
+  targetScore: number;
+  gap: string;
+  nextMove: string;
+  route: string;
+}
+
+export interface MoatLane {
+  id: string;
+  title: string;
+  winCondition: string;
+  proof: string[];
+  ownerModules: string[];
+  riskIfIgnored: string;
+  score: number;
+}
+
+export interface CompetitiveBenchmarkReport {
+  id: string;
+  generatedAt: string;
+  thesis: string;
+  sourceWindow: string;
+  overallScore: number;
+  competitors: CompetitorProfile[];
+  capabilities: CompetitiveCapability[];
+  moatLanes: MoatLane[];
+  topMoves: Array<{ order: number; capabilityId: string; move: string; expectedLift: number }>;
+  sourceNotes: string[];
+}
+
+export interface MoatActivationRun {
+  id: string;
+  reportId: string;
+  generatedAt: string;
+  status: 'created' | 'in-progress';
+  progress: {
+    score: number;
+    completedGates: number;
+    totalGates: number;
+  };
+  summary: string;
+  tactic: string;
+  stageGates: Array<{
+    id: string;
+    title: string;
+    ownerAgent: string;
+    status: 'pass' | 'warn' | 'block' | 'pending';
+    score: number;
+    evidence: string[];
+    nextAction: string;
+  }>;
+  proofArtifacts: Array<{
+    id: string;
+    name: string;
+    kind: string;
+    uri: string;
+    sha256: string;
+    source: string;
+  }>;
+  riskRegister: Array<{
+    id: string;
+    severity: 'low' | 'medium' | 'high' | 'critical';
+    title: string;
+    mitigation: string;
+    ownerAgent: string;
+  }>;
+  missionControlRuns: Array<{
+    capabilityId: string;
+    capabilityTitle: string;
+    missionControlRunId: string;
+    releaseMissionId: string;
+    status: string;
+    score: number;
+    proof: string[];
+  }>;
+  nextReviewAt: string;
 }
 
 export type FinOpsTaskType =

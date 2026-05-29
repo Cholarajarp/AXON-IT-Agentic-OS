@@ -132,7 +132,7 @@ export function Sidebar({ onOpenHelp }: { onOpenHelp: () => void }) {
     <aside className="w-60 shrink-0 bg-s-surface border-r border-s-border flex flex-col overflow-hidden">
       {/* Logo */}
       <div className="h-14 shrink-0 px-4 flex items-center gap-2.5 border-b border-s-border">
-        <div className="w-7 h-7 shrink-0 rounded-md bg-gradient-to-br from-s-brand to-s-brand-dim flex items-center justify-center">
+        <div className="w-7 h-7 shrink-0 rounded-md bg-s-brand flex items-center justify-center">
           <div className="w-2.5 h-2.5 bg-s-surface rounded-sm" />
         </div>
         <div className="min-w-0 flex flex-col leading-tight">

@@ -4,6 +4,7 @@ import { missionControl } from '../mission-control/index.js';
 
 const runSchema = z.object({
   tenantId: z.string().min(1).optional(),
+  blueprintId: z.string().min(1).optional(),
   customerName: z.string().min(1).optional(),
   mission: z.string().min(12),
   previewUrl: z.string().url().optional(),

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, Filter, Pause, Play, RadioTower, RefreshCw, Terminal as TerminalIcon, Trash2 } from "lucide-react";
 import { Button, Card, EmptyState, PageHeader } from "../components/ui/primitives";
+import { createClientId } from "../lib/ids";
 
 interface LogEntry {
   id: string;
@@ -41,7 +42,7 @@ export function Terminal() {
   const pushLog = (entry: Omit<LogEntry, "id" | "timestamp"> & { timestamp?: number }) => {
     const next = {
       ...entry,
-      id: `log_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      id: createClientId("log"),
       timestamp: entry.timestamp ?? Date.now(),
     };
     logBufferRef.current = [...logBufferRef.current.slice(-499), next];

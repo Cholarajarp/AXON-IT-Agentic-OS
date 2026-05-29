@@ -5,6 +5,7 @@ import {
   Gauge,
   GitCompareArrows,
   Loader2,
+  PlayCircle,
   RefreshCw,
   ShieldAlert,
   TestTubeDiagonal,
@@ -13,7 +14,8 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button, Card, CardHeader, EmptyState, Kpi, PageHeader, SeverityBadge } from "../components/ui/primitives";
-import { useModelEvaluationReport, type EvalCaseResult } from "../lib/queries";
+import { useModelEvaluationReport, useRunModelEvaluation, type EvalCaseResult } from "../lib/queries";
+import { useToast } from "../lib/toast";
 
 const gateIcon = {
   pass: CheckCircle2,
@@ -29,11 +31,26 @@ const gateColor = {
 
 export function Evaluations() {
   const evaluations = useModelEvaluationReport();
+  const runEvaluation = useRunModelEvaluation();
+  const { toast } = useToast();
   const report = evaluations.data?.report;
   const gates = evaluations.data?.gates ?? [];
   const runtime = evaluations.data?.runtime;
   const passRate = report && report.total > 0 ? Math.round((report.passed / report.total) * 100) : 0;
   const releaseBlocked = Boolean(report?.failed) || gates.some((gate) => gate.status === "fail");
+
+  const handleRunEvaluation = async () => {
+    try {
+      const result = await runEvaluation.mutateAsync({ includeAdversarial: true });
+      toast({
+        kind: result.report.failed > 0 ? "warning" : "success",
+        title: "Evaluation run complete",
+        description: `${result.run.id}: ${result.report.passed}/${result.report.total} cases passed.`,
+      });
+    } catch (err) {
+      toast({ kind: "error", title: "Evaluation run failed", description: err instanceof Error ? err.message : "Unable to run model evaluations." });
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -41,9 +58,14 @@ export function Evaluations() {
         title="Evaluation Lab"
         description="Backend-run model router regression, provider health, and release quality gates"
         action={
-          <Button variant="secondary" size="sm" icon={<RefreshCw size={13} />} onClick={() => evaluations.refetch()}>
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="primary" size="sm" icon={<PlayCircle size={13} />} onClick={handleRunEvaluation} disabled={runEvaluation.isPending}>
+              {runEvaluation.isPending ? "Running" : "Run eval"}
+            </Button>
+            <Button variant="secondary" size="sm" icon={<RefreshCw size={13} />} onClick={() => evaluations.refetch()}>
+              Refresh
+            </Button>
+          </div>
         }
       />
 

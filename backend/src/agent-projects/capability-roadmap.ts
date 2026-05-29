@@ -12,7 +12,7 @@ export function buildCapabilityRoadmap(): AgentProjectCapabilityRoadmap {
     id: `roadmap_${nanoid(10)}`,
     generatedAt: new Date().toISOString(),
     position:
-      'AXON should behave like an AI IT operating company: scoped intake, governed agent teams, real execution evidence, release safety, customer handoff, and managed-service continuity.',
+      'AXON should behave like an AI IT service delivery organization: scoped intake, governed agent teams, real execution evidence, release safety, customer handoff, and managed-service continuity.',
     readinessScore,
     capabilityMatrix,
     finalBuilds: buildFinalBuildItems(),

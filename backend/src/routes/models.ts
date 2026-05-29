@@ -127,6 +127,11 @@ const providerParamsSchema = z.object({
   provider: z.enum(['anthropic', 'openai', 'google', 'bedrock', 'ollama', 'vllm', 'localMock']),
 });
 
+const evalRunSchema = z.object({
+  includeAdversarial: z.boolean().optional(),
+  tenantId: z.string().min(1).optional(),
+});
+
 let hydrated = false;
 
 export async function registerModelRoutes(app: FastifyInstance) {
@@ -156,7 +161,29 @@ export async function registerModelRoutes(app: FastifyInstance) {
     timestamp: Date.now(),
   }));
 
-  app.get('/models/evaluations', async () => {
+  app.get('/models/evaluations', async () => modelEvaluationReport());
+
+  app.post('/models/evaluations/run', async (request, reply) => {
+    const parsed = evalRunSchema.safeParse(request.body ?? {});
+    if (!parsed.success) {
+      return reply.status(400).send({
+        error: 'ValidationError',
+        message: 'Invalid evaluation run request',
+        issues: parsed.error.issues,
+      });
+    }
+
+    return reply.status(201).send({
+      ...(await modelEvaluationReport()),
+      run: {
+        id: `eval_${Date.now().toString(36)}`,
+        tenantId: parsed.data.tenantId ?? 'tenant_default',
+        includeAdversarial: Boolean(parsed.data.includeAdversarial),
+      },
+    });
+  });
+
+  async function modelEvaluationReport() {
     const report = await runEval();
     const health = modelRouter.getHealth();
     return {
@@ -184,7 +211,7 @@ export async function registerModelRoutes(app: FastifyInstance) {
         },
       ],
     };
-  });
+  }
 
   app.get('/models/config', async () => ({
     providers: await modelProviderConfigStore.listPublic(),

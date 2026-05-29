@@ -1,7 +1,7 @@
 import type { AgentExecutionInput } from '../types.js';
-import { SimulatedAgent } from './base.js';
+import { DeterministicAgent } from './base.js';
 
-export class MigrationSafetyAgent extends SimulatedAgent {
+export class MigrationSafetyAgent extends DeterministicAgent {
   name = 'MigrationSafetyAgent';
   description = 'Reviews SQL migrations for lock risk, destructive operations, rollback gaps, and production safety';
   version = '1.0.0';
@@ -19,6 +19,6 @@ export class MigrationSafetyAgent extends SimulatedAgent {
     };
   }
 
-  protected getSimulatedDurationMs() { return 1000 + Math.random() * 400; }
-  protected getSimulatedCost() { return 0.004 + Math.random() * 0.002; }
+  protected estimateDurationMs() { return 1200; }
+  protected estimateCost() { return 0.005; }
 }

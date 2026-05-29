@@ -62,10 +62,18 @@ export function CommandCenter() {
       <div>
         <PageHeader title="Command Center" description="Real-time oversight across active workflows and agent fleet" />
         <Card>
-          <div className="flex items-center justify-center py-20">
-            <div className="flex flex-col items-center gap-3">
-              <RefreshCw size={24} className="text-s-muted animate-spin" />
-              <span className="text-s-secondary text-[13px]">Loading command center...</span>
+          <div className="p-4">
+            <div className="space-y-3">
+              {[0, 1, 2, 3].map((item) => (
+                <div key={item} className="flex min-h-16 items-center gap-3 rounded-md border border-s-border bg-s-base px-4">
+                  <div className="h-10 w-10 animate-pulse rounded-md bg-s-subtle" />
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="h-3 w-2/3 animate-pulse rounded bg-s-subtle" />
+                    <div className="h-3 w-1/3 animate-pulse rounded bg-s-subtle" />
+                  </div>
+                  <div className="h-3 w-12 animate-pulse rounded bg-s-subtle" />
+                </div>
+              ))}
             </div>
           </div>
         </Card>
@@ -112,7 +120,7 @@ export function CommandCenter() {
         }
       />
 
-      <Card className="relative mb-5 overflow-hidden border border-s-border/80 bg-gradient-to-br from-s-surface via-s-surface to-s-base">
+      <Card className="relative mb-5 overflow-hidden border border-s-border/80 bg-s-surface">
         <div className="relative grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-5 p-5">
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-3">

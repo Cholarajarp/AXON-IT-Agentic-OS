@@ -239,7 +239,7 @@ function buildCapabilities(tenantId: string): ProductionCapability[] {
       productionUse: 'Packages browser journeys, accessibility findings, and Playwright evidence.',
       evidence: qaReports.map((report) => `browser QA ${report.id} ${report.status}`),
       active: qaReports.length > 0 || Boolean(latestRun?.browserQaReportId),
-      gaps: ['Replace synthetic trace plans with real Playwright execution videos and screenshots.'],
+      gaps: ['Attach executed Playwright videos, screenshots, traces, and console/network logs to Browser QA reports.'],
     }),
     capability({
       id: 'security-center',
@@ -326,7 +326,7 @@ function capability(input: Omit<ProductionCapability, 'status' | 'level' | 'acti
 function buildServiceOffers(capabilities: ProductionCapability[]): ProductionServiceOffer[] {
   const active = new Set(capabilities.filter((capability) => capability.status === 'active').map((capability) => capability.id));
   return [
-    offer('saas-mvp-delivery', 'Production SaaS MVP Delivery', 'fixed-scope', ['product-factory', 'agentic-mesh', 'model-finops', 'sandbox-kernel', 'preview-qa', 'security-center', 'release-command', 'customer-delivery'], active),
+    offer('saas-mvp-delivery', 'Production SaaS Product Delivery', 'fixed-scope', ['product-factory', 'agentic-mesh', 'model-finops', 'sandbox-kernel', 'preview-qa', 'security-center', 'release-command', 'customer-delivery'], active),
     offer('database-safe-modernization', 'Database-Safe App Modernization', 'fixed-scope', ['product-factory', 'database-pipeline', 'security-center', 'release-command', 'trust-ledger', 'customer-delivery'], active),
     offer('managed-ai-it-ops', 'Managed AI IT Operations', 'enterprise-managed-service', ['agentic-mesh', 'model-finops', 'release-command', 'trust-ledger', 'agent-blackboard', 'customer-delivery'], active),
     offer('api-agent-enablement', 'API and Agent Connector Enablement', 'usage-based', ['api-forge', 'security-center', 'model-finops', 'trust-ledger', 'customer-delivery'], active),

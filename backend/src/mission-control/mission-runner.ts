@@ -71,16 +71,20 @@ export class MissionControlService {
       'CustomerSuccessAgent',
     ]));
 
-    const blueprint = productFactory.createBlueprint({
-      tenantId,
-      customerName: input.customerName,
-      goal: mission,
-      budgetUsd: input.budgetUsd,
-      timelineDays: input.timelineDays,
-      compliance: input.compliance,
-      integrations: input.integrations,
-    });
-    productFactory.approveBlueprint(blueprint.id);
+    const existingBlueprint = input.blueprintId ? productFactory.getBlueprint(input.blueprintId) : undefined;
+    const createdBlueprint = existingBlueprint
+      ? productFactory.approveBlueprint(existingBlueprint.id) ?? existingBlueprint
+      : productFactory.createBlueprint({
+        tenantId,
+        customerName: input.customerName,
+        goal: mission,
+        budgetUsd: input.budgetUsd,
+        timelineDays: input.timelineDays,
+        compliance: input.compliance,
+        integrations: input.integrations,
+      });
+    if (!existingBlueprint) productFactory.approveBlueprint(createdBlueprint.id);
+    const blueprint = productFactory.getBlueprint(createdBlueprint.id) ?? createdBlueprint;
 
     const databaseReview = databasePipeline.review({
       name: `${blueprint.templateName} production database readiness`,

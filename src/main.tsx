@@ -20,82 +20,34 @@ const queryClient = new QueryClient({
 
 function ErrorFallback({ error }: { error: Error }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100vh',
-        backgroundColor: '#0A0C10',
-        color: '#E5E7EB',
-        padding: '2rem',
-      }}
-    >
-      <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1rem' }}>
-        Something went wrong
-      </h1>
-      <pre
-        style={{
-          backgroundColor: '#1F2937',
-          padding: '1rem',
-          borderRadius: '0.5rem',
-          maxWidth: '600px',
-          overflow: 'auto',
-        }}
-      >
+    <div className="flex min-h-screen flex-col items-center justify-center bg-s-base px-6 py-12 text-s-primary">
+      <div className="w-full max-w-xl rounded-lg border border-s-border bg-s-surface p-6">
+        <h1 className="text-xl font-semibold">Something went wrong</h1>
+        <pre className="mt-4 max-h-64 overflow-auto rounded-md border border-s-border bg-s-subtle p-3 font-mono text-[12px] text-s-secondary">
         {error.message}
-      </pre>
-      <button
-        onClick={() => window.location.reload()}
-        style={{
-          marginTop: '1rem',
-          padding: '0.5rem 1rem',
-          backgroundColor: '#3B82F6',
-          color: 'white',
-          border: 'none',
-          borderRadius: '0.375rem',
-          cursor: 'pointer',
-        }}
-      >
-        Reload Page
-      </button>
+        </pre>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 h-11 rounded-md bg-s-brand px-4 text-[14px] font-semibold text-white hover:bg-s-brand-dim"
+        >
+          Reload Page
+        </button>
+      </div>
     </div>
   );
 }
 
 function LoadingFallback() {
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100vh',
-        backgroundColor: '#0A0C10',
-        color: '#E5E7EB',
-      }}
-    >
-      <div style={{ textAlign: 'center' }}>
-        <div
-          style={{
-            width: '40px',
-            height: '40px',
-            border: '3px solid #1F2937',
-            borderTop: '3px solid #3B82F6',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto 1rem',
-          }}
-        />
-        <p>Loading...</p>
+    <div className="flex min-h-screen items-center justify-center bg-s-base px-6 text-s-primary">
+      <div className="w-full max-w-sm rounded-lg border border-s-border bg-s-surface p-5">
+        <div className="h-4 w-32 animate-pulse rounded bg-s-subtle" />
+        <div className="mt-4 space-y-2">
+          <div className="h-3 w-full animate-pulse rounded bg-s-subtle" />
+          <div className="h-3 w-5/6 animate-pulse rounded bg-s-subtle" />
+          <div className="h-3 w-2/3 animate-pulse rounded bg-s-subtle" />
+        </div>
       </div>
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }

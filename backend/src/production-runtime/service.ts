@@ -65,7 +65,7 @@ export class ProductionRuntimeService {
         warn: true,
         title: 'Real browser worker is enabled',
         owner: 'QAAgent',
-        whyItMatters: 'Synthetic browser plans are useful, but production proof needs real Playwright screenshots, traces, videos, and console/network logs.',
+        whyItMatters: 'DOM assertions and generated Playwright specs are useful, but production proof needs executed screenshots, traces, videos, and console/network logs.',
         evidence: [browserWorkerEnabled ? 'browser worker enabled' : 'browser worker disabled'],
         nextAction: 'Set AXON_BROWSER_WORKER_ENABLED=1 and install browser dependencies for the worker environment.',
       }),

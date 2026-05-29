@@ -3,6 +3,7 @@ import { Bot, Activity, Clock, Cpu, Zap, RefreshCw, Search, Filter } from "lucid
 import { Card, PageHeader, Button, Kpi, RightPanel } from "../components/ui/primitives";
 import { useAgents } from "../lib/queries";
 import type { AgentInstance } from "../lib/store";
+import { useToast } from "../lib/toast";
 
 const stateConfig = {
   RUNNING: { label: "Running", dot: "bg-s-brand animate-pulse", badge: "bg-s-brand/10 text-s-brand border-s-brand/30" },
@@ -11,7 +12,8 @@ const stateConfig = {
 };
 
 export function Agents() {
-  const { data: agents = [], isLoading } = useAgents();
+  const { data: agents = [], isLoading, refetch } = useAgents();
+  const { toast } = useToast();
   const [selected, setSelected] = useState<AgentInstance | null>(null);
   const [filter, setFilter] = useState<"all" | "RUNNING" | "IDLE" | "ERROR">("all");
   const [q, setQ] = useState("");
@@ -33,6 +35,25 @@ export function Agents() {
   const avgConfidence = agents.length > 0
     ? (agents.reduce((sum, a) => sum + a.confidence, 0) / agents.length * 100).toFixed(1)
     : "0";
+
+  const copyAgentArtifact = async (agent: AgentInstance, kind: "logs" | "trace") => {
+    const artifact = kind === "logs"
+      ? [
+        `Agent ${agent.id}`,
+        `type=${agent.type}`,
+        `state=${agent.state}`,
+        `task=${agent.currentTask ?? "idle"}`,
+        `tokens=${agent.tokensUsed}`,
+        `confidence=${agent.confidence}`,
+      ].join("\n")
+      : JSON.stringify({ exportedAt: new Date().toISOString(), agent }, null, 2);
+    try {
+      await navigator.clipboard.writeText(artifact);
+      toast({ kind: "success", title: kind === "logs" ? "Logs copied" : "Trace copied", description: `${agent.id} artifact copied to clipboard.` });
+    } catch {
+      toast({ kind: "error", title: "Copy failed", description: "Clipboard access was blocked by the browser." });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -56,7 +77,7 @@ export function Agents() {
         title="Agent Fleet"
         description="Monitor, manage, and inspect all active agent instances"
         action={
-          <Button variant="secondary" size="sm" icon={<RefreshCw size={13} />}>
+          <Button variant="secondary" size="sm" icon={<RefreshCw size={13} />} onClick={() => refetch()}>
             Refresh
           </Button>
         }
@@ -81,7 +102,7 @@ export function Agents() {
                 className="bg-transparent flex-1 min-w-0 outline-none text-s-primary placeholder:text-s-muted text-[12.5px]"
               />
             </div>
-            <Button variant="ghost" size="sm" icon={<Filter size={13} />}>Filters</Button>
+            <Button variant="ghost" size="sm" icon={<Filter size={13} />} onClick={() => { setFilter("all"); setQ(""); }}>Clear</Button>
           </div>
           <div className="flex items-center gap-1 p-0.5 rounded-md bg-s-subtle border border-s-border">
             {(["all", "RUNNING", "IDLE", "ERROR"] as const).map((f) => (
@@ -89,7 +110,7 @@ export function Agents() {
                 key={f}
                 onClick={() => setFilter(f)}
                 className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
-                  filter === f ? "bg-s-surface text-s-primary shadow-sm" : "text-s-secondary hover:text-s-primary"
+                  filter === f ? "bg-s-surface text-s-primary" : "text-s-secondary hover:text-s-primary"
                 }`}
               >
                 {f === "all" ? "All" : f === "RUNNING" ? "Running" : f === "IDLE" ? "Idle" : "Error"}
@@ -111,7 +132,13 @@ export function Agents() {
       </Card>
 
       <RightPanel open={!!selected} onClose={() => setSelected(null)} title={selected?.type ?? ""}>
-        {selected && <AgentDetail agent={selected} />}
+        {selected && (
+          <AgentDetail
+            agent={selected}
+            onRefresh={() => refetch()}
+            onCopy={(kind) => copyAgentArtifact(selected, kind)}
+          />
+        )}
       </RightPanel>
     </div>
   );
@@ -122,7 +149,7 @@ function AgentCard({ agent, onClick }: { agent: AgentInstance; onClick: () => vo
   return (
     <button
       onClick={onClick}
-      className="text-left w-full p-4 rounded-lg bg-s-base border border-s-border hover:border-s-border-strong transition-all hover:shadow-sm group"
+      className="text-left w-full p-4 rounded-lg bg-s-base border border-s-border hover:border-s-border-strong transition-all group"
     >
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2.5 min-w-0">
@@ -172,7 +199,7 @@ function AgentCard({ agent, onClick }: { agent: AgentInstance; onClick: () => vo
   );
 }
 
-function AgentDetail({ agent }: { agent: AgentInstance }) {
+function AgentDetail({ agent, onRefresh, onCopy }: { agent: AgentInstance; onRefresh: () => void; onCopy: (kind: "logs" | "trace") => Promise<void> }) {
   const cfg = stateConfig[agent.state];
   const elapsed = Math.floor((Date.now() - agent.updatedAt) / 1000);
 
@@ -237,10 +264,9 @@ function AgentDetail({ agent }: { agent: AgentInstance }) {
       </div>
 
       <div className="flex gap-2 pt-3 border-t border-s-border">
-        {agent.state === "ERROR" && <Button variant="primary" size="sm" icon={<RefreshCw size={12} />}>Retry</Button>}
-        {agent.state === "RUNNING" && <Button variant="danger" size="sm">Pause</Button>}
-        <Button variant="secondary" size="sm">View Logs</Button>
-        <Button variant="secondary" size="sm">Trace</Button>
+        {agent.state === "ERROR" && <Button variant="primary" size="sm" icon={<RefreshCw size={12} />} onClick={onRefresh}>Retry</Button>}
+        <Button variant="secondary" size="sm" onClick={() => void onCopy("logs")}>View Logs</Button>
+        <Button variant="secondary" size="sm" onClick={() => void onCopy("trace")}>Trace</Button>
       </div>
     </div>
   );

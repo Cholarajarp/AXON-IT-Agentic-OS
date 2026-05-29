@@ -153,7 +153,7 @@ export async function executeTool(input: ToolRuntimeInput): Promise<ToolRuntimeR
   // Step 4 — rbac-check (agent role)
   if (!aborted) {
     const s = Date.now();
-    const synthetic = {
+    const agentActor = {
       id: `agent:${input.agentId}`,
       email: `${input.agentId}@axon.local`,
       name: input.agentId,
@@ -162,7 +162,7 @@ export async function executeTool(input: ToolRuntimeInput): Promise<ToolRuntimeR
       permissions: [],
       active: true,
     };
-    const ok = rbacService.canAccess(synthetic, 'tools', 'execute');
+    const ok = rbacService.canAccess(agentActor, 'tools', 'execute');
     record('rbac-check', 4, ok, s, ok ? undefined : 'Agent role lacks tools:execute');
   }
 

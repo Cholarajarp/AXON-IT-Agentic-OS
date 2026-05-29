@@ -97,7 +97,7 @@ export function PreviewQa() {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Kpi label="QA Score" value={current ? `${current.score}%` : '--'} hint={current?.status ?? 'No report'} />
-        <Kpi label="Journeys" value={current ? `${journeysPassed}/${current.journeys.length}` : `${journeys.length}`} hint="Synthetic browser paths" />
+        <Kpi label="Journeys" value={current ? `${journeysPassed}/${current.journeys.length}` : `${journeys.length}`} hint="Browser assertions" />
         <Kpi label="A11y Blockers" value={String(blockers)} hint={`${current?.accessibilityFindings.length ?? 0} findings`} />
         <Kpi label="Evidence" value={String(evidenceCount)} hint="Release artifacts" />
       </div>
@@ -198,8 +198,9 @@ function ReportOverview({ report }: { report: BrowserQaReport | null }) {
           <div className="mt-2 text-[12px] leading-relaxed text-s-secondary">{report.summary}</div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <Mini label="Preview" value={report.preview.reachable ? 'Reachable' : 'Offline'} />
+          <Mini label="Evidence mode" value={formatEvidenceMode(report.evidenceMode)} />
           <Mini label="Latency" value={report.preview.responseMs !== undefined ? `${report.preview.responseMs}ms` : '--'} />
           <Mini label="Title" value={report.preview.title ?? 'Missing'} />
         </div>
@@ -341,6 +342,12 @@ function Mini({ label, value }: { label: string; value: string }) {
       <div className="font-mono text-[13px] text-s-primary truncate">{value}</div>
     </div>
   );
+}
+
+function formatEvidenceMode(mode: BrowserQaReport['evidenceMode']) {
+  if (mode === 'live-url') return 'Live URL';
+  if (mode === 'html-snapshot') return 'HTML snapshot';
+  return 'Generated fallback';
 }
 
 function parseJourneys(value: string): BrowserJourneyInput[] {

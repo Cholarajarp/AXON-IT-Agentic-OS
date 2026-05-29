@@ -13,16 +13,20 @@ import type {
   EnterpriseCapability,
   EnterpriseMarketSignal,
   EnterpriseReadiness,
+  ITGiantReadinessReport,
   LearningSource,
   LearningSourceType,
   ManagedServiceAccount,
+  ManagedServiceTransformationRun,
   ManagedServiceCoverage,
   ManagedServiceTower,
   ProjectCheckpoint,
   RoleSkillProfile,
   RollbackPreview,
   SecurityScanResult,
+  ServiceDeskActivationResult,
   ServiceDeskTicket,
+  ServiceOperationsDashboard,
   ServiceRequestStatus,
   SkillDomain,
   StructureScanResult,
@@ -141,6 +145,15 @@ export function useServiceDeskTickets(options?: Partial<UseQueryOptions<{ ticket
   });
 }
 
+export function useServiceOperationsDashboard(options?: Partial<UseQueryOptions<ServiceOperationsDashboard>>) {
+  return useQuery({
+    queryKey: queryKeys.serviceOperationsDashboard,
+    queryFn: () => fetchAPI<ServiceOperationsDashboard>('/service-desk/operations-dashboard'),
+    ...defaultQueryOptions,
+    ...options,
+  });
+}
+
 export function useCreateServiceDeskTicket() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -158,7 +171,10 @@ export function useCreateServiceDeskTicket() {
         method: 'POST',
         body: JSON.stringify(input),
       }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.serviceDeskTickets }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.serviceDeskTickets });
+      queryClient.invalidateQueries({ queryKey: queryKeys.serviceOperationsDashboard });
+    },
   });
 }
 
@@ -170,7 +186,54 @@ export function useUpdateServiceDeskStatus() {
         method: 'POST',
         body: JSON.stringify({ status: input.status }),
       }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.serviceDeskTickets }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.serviceDeskTickets });
+      queryClient.invalidateQueries({ queryKey: queryKeys.serviceOperationsDashboard });
+    },
+  });
+}
+
+export function useActivateServiceOperationsKernel() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: string; operator?: string; mode?: 'dry-run' | 'supervised' | 'execute' }) =>
+      fetchAPI<ServiceDeskActivationResult>(`/service-desk/tickets/${encodeURIComponent(input.id)}/activate-kernel`, {
+        method: 'POST',
+        body: JSON.stringify({ operator: input.operator, mode: input.mode }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.serviceDeskTickets });
+      queryClient.invalidateQueries({ queryKey: queryKeys.serviceOperationsDashboard });
+      queryClient.invalidateQueries({ queryKey: queryKeys.trustLedgerRecords });
+    },
+  });
+}
+
+export function useAttachServiceDeskEvidence() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      id: string;
+      stageId?: string;
+      evidence: string;
+      artifactId?: string;
+      verifiedBy?: string;
+      status?: 'satisfied' | 'partial' | 'blocked';
+    }) =>
+      fetchAPI<ServiceDeskTicket>(`/service-desk/tickets/${encodeURIComponent(input.id)}/evidence`, {
+        method: 'POST',
+        body: JSON.stringify({
+          stageId: input.stageId,
+          evidence: input.evidence,
+          artifactId: input.artifactId,
+          verifiedBy: input.verifiedBy,
+          status: input.status,
+        }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.serviceDeskTickets });
+      queryClient.invalidateQueries({ queryKey: queryKeys.serviceOperationsDashboard });
+    },
   });
 }
 
@@ -219,6 +282,42 @@ export function useCreateManagedServiceAccount() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.managedServiceAccounts });
       queryClient.setQueryData(queryKeys.managedServiceAccount(data.id), data);
+    },
+  });
+}
+
+export function useManagedServiceITGiantReadiness(accountId?: string, options?: Partial<UseQueryOptions<ITGiantReadinessReport>>) {
+  const query = accountId ? `?accountId=${encodeURIComponent(accountId)}` : '';
+  return useQuery({
+    queryKey: queryKeys.managedServiceITGiantReadiness(accountId),
+    queryFn: () => fetchAPI<ITGiantReadinessReport>(`/managed-services/it-giant-readiness${query}`),
+    staleTime: 5 * 60 * 1000,
+    ...options,
+  });
+}
+
+export function useManagedServiceTransformationRuns(options?: Partial<UseQueryOptions<{ runs: ManagedServiceTransformationRun[] }>>) {
+  return useQuery({
+    queryKey: queryKeys.managedServiceTransformationRuns,
+    queryFn: () => fetchAPI<{ runs: ManagedServiceTransformationRun[] }>('/managed-services/transformation-runs'),
+    ...defaultQueryOptions,
+    ...options,
+  });
+}
+
+export function useCreateManagedServiceTransformationRun() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { accountId?: string; maxMissions?: number; tactic?: string; tenantId?: string } = {}) =>
+      fetchAPI<ManagedServiceTransformationRun>('/managed-services/transformation-runs', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.managedServiceTransformationRuns });
+      queryClient.invalidateQueries({ queryKey: queryKeys.managedServiceITGiantReadiness(data.accountId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.missionControlRuns });
+      queryClient.invalidateQueries({ queryKey: queryKeys.trustLedgerRecords });
     },
   });
 }
@@ -337,7 +436,7 @@ export function useCreateAutonomousWorkforcePlane() {
 }
 
 /* ============================================================
- * Company OS — integrated IT-company operating mission
+ * Company OS — integrated IT service software operating mission
  * ============================================================ */
 
 export function useCompanyOsMissions(options?: Partial<UseQueryOptions<{ missions: CompanyOperatingMission[] }>>) {
@@ -376,6 +475,24 @@ export function useCreateCompanyOsMission() {
       queryClient.invalidateQueries({ queryKey: queryKeys.managedServiceAccounts });
       queryClient.invalidateQueries({ queryKey: queryKeys.productBlueprints });
       queryClient.invalidateQueries({ queryKey: queryKeys.serviceDeskTickets });
+    },
+  });
+}
+
+export function useActivateCompanyOsMission() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      fetchAPI<{ mission: CompanyOperatingMission; message: string }>(`/company-os/missions/${encodeURIComponent(id)}/activate-axon`, {
+        method: 'POST',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.companyOsMissions });
+      queryClient.invalidateQueries({ queryKey: queryKeys.missionControlRuns });
+      queryClient.invalidateQueries({ queryKey: queryKeys.agenticMeshBlueprints });
+      queryClient.invalidateQueries({ queryKey: queryKeys.releaseCommandMissions });
+      queryClient.invalidateQueries({ queryKey: queryKeys.browserQaReports });
+      queryClient.invalidateQueries({ queryKey: queryKeys.trustLedgerRecords });
     },
   });
 }

@@ -16,8 +16,25 @@ const reportSchema = z.object({
 
 const idParamsSchema = z.object({ id: z.string().min(1) });
 const launchSchema = z.object({ buildPackId: z.string().min(1) });
+const moatActivationSchema = z.object({
+  tactic: z.string().min(1).optional(),
+  maxMissions: z.number().int().min(1).max(5).optional(),
+  tenantId: z.string().min(1).optional(),
+});
 
 export async function registerMarketRadarRoutes(app: FastifyInstance) {
+  app.get('/market-radar/competitive-benchmark', async () => marketRadar.getCompetitiveBenchmark());
+
+  app.get('/market-radar/moat-activation-runs', async () => ({
+    runs: marketRadar.listMoatActivationRuns(),
+  }));
+
+  app.post('/market-radar/moat-activation-runs', async (request, reply) => {
+    const parsed = moatActivationSchema.safeParse(request.body ?? {});
+    if (!parsed.success) return validationError(reply, parsed.error.issues);
+    return reply.status(201).send(await marketRadar.createMoatActivationRun(parsed.data));
+  });
+
   app.get('/market-radar/reports', async () => ({
     reports: marketRadar.listReports(),
   }));

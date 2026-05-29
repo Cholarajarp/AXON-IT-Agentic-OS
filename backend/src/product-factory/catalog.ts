@@ -3,11 +3,11 @@ import type { ServiceCatalogTemplate } from './types.js';
 export const SERVICE_CATALOG: ServiceCatalogTemplate[] = [
   {
     id: 'saas-mvp',
-    name: 'Build a SaaS MVP',
+    name: 'Build a Production SaaS Product',
     category: 'application-build',
-    description: 'Generate a production-ready SaaS product with frontend, API, database, auth, tests, CI, and deployment runbook.',
+    description: 'Generate a production-ready SaaS product with frontend, API, database, auth, tests, CI, observability, security checks, and deployment runbook.',
     idealFor: ['founders', 'internal product teams', 'new revenue experiments'],
-    deliverables: ['PRD', 'architecture', 'React UI', 'Fastify API', 'PostgreSQL schema', 'tests', 'CI/CD', 'delivery report'],
+    deliverables: ['PRD', 'architecture', 'React UI', 'Fastify API', 'PostgreSQL schema', 'tests', 'CI/CD', 'observability', 'delivery report'],
     acceptanceCriteria: [
       'Users can complete the primary workflow end to end',
       'Core APIs are documented and covered by integration tests',

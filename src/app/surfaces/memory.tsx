@@ -1,8 +1,11 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Brain, Search, Database, Layers, Clock, Zap, Tag, ExternalLink } from "lucide-react";
 import { Card, CardHeader, PageHeader, Button } from "../components/ui/primitives";
-import { useMemoryAll } from "../lib/queries";
+import { queryKeys, useMemoryAll } from "../lib/queries";
 import type { MemoryRecord } from "../lib/queries";
+import { useRouting } from "../lib/useRouting";
+import { useToast } from "../lib/toast";
 
 const typeConfig = {
   semantic: { label: "Semantic", icon: Database, color: "bg-s-brand/10 text-s-brand border-s-brand/30" },
@@ -11,7 +14,10 @@ const typeConfig = {
 };
 
 export function Memory() {
-  const { data: records = [] } = useMemoryAll();
+  const { data: records = [], refetch } = useMemoryAll();
+  const queryClient = useQueryClient();
+  const { setRoute } = useRouting();
+  const { toast } = useToast();
   const [q, setQ] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | "semantic" | "episodic" | "procedural">("all");
   const [selected, setSelected] = useState<MemoryRecord | null>(null);
@@ -43,8 +49,18 @@ export function Memory() {
         description="Long-term knowledge, episodic recall, and procedural memory accessed by the agent fleet"
         action={
           <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm">Configure Stores</Button>
-            <Button variant="secondary" size="sm">Flush Cache</Button>
+            <Button variant="secondary" size="sm" onClick={() => setRoute("settings")}>Configure Stores</Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={async () => {
+                await queryClient.invalidateQueries({ queryKey: queryKeys.memoryAll });
+                await refetch();
+                toast({ kind: "success", title: "Memory cache flushed", description: "Memory records were refetched from the backend." });
+              }}
+            >
+              Flush Cache
+            </Button>
           </div>
         }
       />
@@ -97,7 +113,7 @@ export function Memory() {
                 key={t}
                 onClick={() => setTypeFilter(t)}
                 className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
-                  typeFilter === t ? "bg-s-surface text-s-primary shadow-sm" : "text-s-secondary hover:text-s-primary"
+                  typeFilter === t ? "bg-s-surface text-s-primary" : "text-s-secondary hover:text-s-primary"
                 }`}
               >
                 {t === "all" ? "All" : t.charAt(0).toUpperCase() + t.slice(1)}

@@ -1,4 +1,5 @@
 import type { IntegrationConfig, IntegrationConnector, IntegrationType, ITSMTicket } from './types.js';
+import { DurableJsonStore } from '../services/durable-json-store.js';
 import { ServiceNowConnector } from './connectors/servicenow.js';
 import { JiraConnector } from './connectors/jira.js';
 import { PagerDutyConnector } from './connectors/pagerduty.js';
@@ -70,6 +71,8 @@ export interface ConnectorStatus {
 class ConnectorRegistry {
   private connectors = new Map<string, IntegrationConnector>();
   private configs = new Map<string, IntegrationConfig>();
+  private configsHydrated = false;
+  private readonly configStore = new DurableJsonStore<IntegrationConfig[]>('integrations/configs.json', []);
 
   constructor() {
     this.registerDefaults();
@@ -90,9 +93,11 @@ class ConnectorRegistry {
   }
 
   async configure(config: IntegrationConfig): Promise<boolean> {
+    this.hydrateConfigs();
     const connector = this.connectors.get(config.type);
     if (!connector) return false;
     this.configs.set(config.type, config);
+    this.persistConfigs();
     if (config.enabled) {
       return connector.connect(config);
     }
@@ -100,20 +105,24 @@ class ConnectorRegistry {
   }
 
   get(type: IntegrationType): IntegrationConnector | undefined {
+    this.hydrateConfigs();
     return this.connectors.get(type);
   }
 
   getConfig(type: IntegrationType): IntegrationConfig | undefined {
+    this.hydrateConfigs();
     return this.configs.get(type);
   }
 
   async createTicket(type: IntegrationType, ticket: Partial<ITSMTicket>): Promise<ITSMTicket | null> {
+    this.hydrateConfigs();
     const connector = this.connectors.get(type);
     if (!connector) return null;
     return connector.createTicket(ticket);
   }
 
   async healthCheckAll(): Promise<Record<string, boolean>> {
+    this.hydrateConfigs();
     const results: Record<string, boolean> = {};
     for (const [type, connector] of this.connectors) {
       try {
@@ -126,6 +135,7 @@ class ConnectorRegistry {
   }
 
   async listConnectorStatus(): Promise<ConnectorStatus[]> {
+    this.hydrateConfigs();
     const checkedAt = new Date().toISOString();
     const statuses: ConnectorStatus[] = [];
 
@@ -169,6 +179,7 @@ class ConnectorRegistry {
   }
 
   listConnectors(): Array<{ type: string; name: string; configured: boolean; enabled: boolean }> {
+    this.hydrateConfigs();
     return Array.from(this.connectors.values()).map((c) => {
       const config = this.configs.get(c.type);
       return {
@@ -179,6 +190,35 @@ class ConnectorRegistry {
       };
     });
   }
+
+  isKnownType(type: string): type is IntegrationType {
+    return this.connectors.has(type);
+  }
+
+  private hydrateConfigs(): void {
+    if (this.configsHydrated) return;
+    for (const config of this.configStore.read()) {
+      const connector = this.connectors.get(config.type);
+      if (!connector) continue;
+      this.configs.set(config.type, config);
+      if (config.enabled) {
+        void connector.connect(config).catch(() => undefined);
+      }
+    }
+    this.configsHydrated = true;
+  }
+
+  private persistConfigs(): void {
+    this.configStore.write(Array.from(this.configs.values()).map(toPersistedConfig));
+  }
 }
 
 export const connectorRegistry = new ConnectorRegistry();
+
+function toPersistedConfig(config: IntegrationConfig): IntegrationConfig {
+  return {
+    ...config,
+    credentials: { type: config.credentials.type },
+    metadata: { ...config.metadata, credentialsPersisted: false },
+  };
+}

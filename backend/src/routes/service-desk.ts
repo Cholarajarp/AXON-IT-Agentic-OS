@@ -14,15 +14,28 @@ const requestSchema = z.object({
 });
 
 const statusSchema = z.object({
-  status: z.enum(['intake', 'triaged', 'approved', 'executing', 'resolved']),
+  status: z.enum(['intake', 'triaged', 'approved', 'executing', 'monitoring', 'resolved', 'closed']),
 });
 
 const idParamsSchema = z.object({ id: z.string().min(1) });
+const activationSchema = z.object({
+  operator: z.string().min(1).optional(),
+  mode: z.enum(['dry-run', 'supervised', 'execute']).optional(),
+});
+const evidenceSchema = z.object({
+  stageId: z.string().min(1).optional(),
+  evidence: z.string().min(3),
+  artifactId: z.string().min(1).optional(),
+  verifiedBy: z.string().min(1).optional(),
+  status: z.enum(['satisfied', 'partial', 'blocked']).optional(),
+});
 
 export async function registerServiceDeskRoutes(app: FastifyInstance) {
   app.get('/service-desk/tickets', async () => ({
     tickets: serviceDesk.listTickets(),
   }));
+
+  app.get('/service-desk/operations-dashboard', async () => serviceDesk.dashboard());
 
   app.post('/service-desk/tickets', async (request, reply) => {
     const parsed = requestSchema.safeParse(request.body);
@@ -35,6 +48,26 @@ export async function registerServiceDeskRoutes(app: FastifyInstance) {
     const parsed = idParamsSchema.safeParse(request.params);
     if (!parsed.success) return validationError(reply, parsed.error.issues);
     const ticket = serviceDesk.getTicket(parsed.data.id);
+    if (!ticket) return reply.status(404).send({ message: 'Ticket not found' });
+    return ticket;
+  });
+
+  app.post('/service-desk/tickets/:id/activate-kernel', async (request, reply) => {
+    const params = idParamsSchema.safeParse(request.params);
+    if (!params.success) return validationError(reply, params.error.issues);
+    const body = activationSchema.safeParse(request.body ?? {});
+    if (!body.success) return validationError(reply, body.error.issues);
+    const result = serviceDesk.activateKernel(params.data.id, body.data);
+    if (!result) return reply.status(404).send({ message: 'Ticket not found' });
+    return result;
+  });
+
+  app.post('/service-desk/tickets/:id/evidence', async (request, reply) => {
+    const params = idParamsSchema.safeParse(request.params);
+    if (!params.success) return validationError(reply, params.error.issues);
+    const body = evidenceSchema.safeParse(request.body ?? {});
+    if (!body.success) return validationError(reply, body.error.issues);
+    const ticket = serviceDesk.attachEvidence(params.data.id, body.data);
     if (!ticket) return reply.status(404).send({ message: 'Ticket not found' });
     return ticket;
   });

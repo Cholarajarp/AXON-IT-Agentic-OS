@@ -1,7 +1,7 @@
 import type { AgentExecutionInput } from '../types.js';
-import { SimulatedAgent } from './base.js';
+import { DeterministicAgent } from './base.js';
 
-export class FinOpsAgent extends SimulatedAgent {
+export class FinOpsAgent extends DeterministicAgent {
   name = 'FinOpsAgent';
   description = 'Controls model budgets, routing, caching, provider escalation, and margin guardrails';
   version = '1.0.0';
@@ -30,6 +30,6 @@ export class FinOpsAgent extends SimulatedAgent {
     };
   }
 
-  protected getSimulatedDurationMs() { return 650 + Math.random() * 350; }
-  protected getSimulatedCost() { return 0.001 + Math.random() * 0.001; }
+  protected estimateDurationMs() { return 825; }
+  protected estimateCost() { return 0.0015; }
 }

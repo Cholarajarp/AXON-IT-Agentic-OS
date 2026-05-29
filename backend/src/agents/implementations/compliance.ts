@@ -1,7 +1,7 @@
 import type { AgentExecutionInput } from '../types.js';
-import { SimulatedAgent } from './base.js';
+import { DeterministicAgent } from './base.js';
 
-export class ComplianceAgent extends SimulatedAgent {
+export class ComplianceAgent extends DeterministicAgent {
   name = 'ComplianceAgent';
   description = 'Collects audit evidence, enforces policies, generates compliance reports';
   version = '1.0.0';
@@ -31,6 +31,6 @@ export class ComplianceAgent extends SimulatedAgent {
     };
   }
 
-  protected getSimulatedDurationMs() { return 2000 + Math.random() * 1000; }
-  protected getSimulatedCost() { return 0.005 + Math.random() * 0.003; }
+  protected estimateDurationMs() { return 2500; }
+  protected estimateCost() { return 0.0065; }
 }

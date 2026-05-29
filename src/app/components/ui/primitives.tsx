@@ -47,7 +47,7 @@ export function SeverityBadge({ level }: { level: "P0" | "P1" | "P2" | "P3" | "H
 
 /* ──────────────── Card ──────────────── */
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`bg-s-surface border border-s-border rounded-md shadow-[0_1px_2px_rgba(0,0,0,0.08)] ${className}`}>{children}</div>;
+  return <div className={`bg-s-surface border border-s-border rounded-md ${className}`}>{children}</div>;
 }
 
 export function CardHeader({
@@ -82,7 +82,7 @@ interface BtnProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 export function Button({ variant = "secondary", size = "md", icon, children, className = "", ...rest }: BtnProps) {
   const sizing = size === "sm" ? "px-2.5 py-1 text-xs" : "px-3 py-1.5 text-[13px]";
   const map: Record<Variant, string> = {
-    primary: "bg-s-brand text-white hover:bg-s-brand-dim border border-transparent shadow-[0_1px_8px_var(--s-brand-glow)]",
+    primary: "bg-s-brand text-white hover:bg-s-brand-dim border border-transparent",
     secondary: "bg-s-surface border border-s-border text-s-primary hover:border-s-border-strong hover:bg-s-hover",
     ghost: "border border-transparent text-s-secondary hover:bg-s-hover hover:text-s-primary",
     danger: "border border-s-critical/30 text-s-critical hover:bg-s-critical/10",
@@ -151,7 +151,7 @@ export function Modal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-s-elevated border border-s-border rounded-md shadow-2xl w-full" style={{ maxWidth: width }}>
+      <div className="relative bg-s-elevated border border-s-border rounded-md w-full" style={{ maxWidth: width }}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-s-border">
           <span className="text-s-primary text-sm font-medium">{title}</span>
           <button onClick={onClose} className="text-s-muted hover:text-s-primary p-1 rounded">
@@ -180,7 +180,7 @@ export function RightPanel({
   return (
     <div className="fixed inset-0 z-40">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
-      <div className="absolute right-0 top-0 h-full w-full max-w-[480px] bg-s-elevated border-l border-s-border flex flex-col shadow-2xl overflow-hidden">
+      <div className="absolute right-0 top-0 h-full w-full max-w-[480px] bg-s-elevated border-l border-s-border flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-s-border shrink-0 min-w-0">
           <span className="text-s-primary text-sm font-medium truncate">{title}</span>
           <button onClick={onClose} className="text-s-muted hover:text-s-primary p-1 rounded shrink-0 ml-2">

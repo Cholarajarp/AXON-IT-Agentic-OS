@@ -17,6 +17,15 @@ const requestSchema = z.object({
 });
 
 const idParamsSchema = z.object({ id: z.string().min(1) });
+const readinessQuerySchema = z.object({
+  accountId: z.string().min(1).optional(),
+});
+const transformationSchema = z.object({
+  accountId: z.string().min(1).optional(),
+  tenantId: z.string().min(1).optional(),
+  maxMissions: z.number().int().positive().max(6).optional(),
+  tactic: z.string().min(1).optional(),
+});
 
 export async function registerManagedServicesRoutes(app: FastifyInstance) {
   app.get('/managed-services/catalog', async () => ({
@@ -40,6 +49,23 @@ export async function registerManagedServicesRoutes(app: FastifyInstance) {
     const account = managedServices.getAccount(parsed.data.id);
     if (!account) return reply.status(404).send({ message: 'Managed service account not found' });
     return account;
+  });
+
+  app.get('/managed-services/it-giant-readiness', async (request, reply) => {
+    const parsed = readinessQuerySchema.safeParse(request.query ?? {});
+    if (!parsed.success) return validationError(reply, parsed.error.issues);
+    return managedServices.getITGiantReadiness(parsed.data);
+  });
+
+  app.get('/managed-services/transformation-runs', async () => ({
+    runs: managedServices.listTransformationRuns(),
+  }));
+
+  app.post('/managed-services/transformation-runs', async (request, reply) => {
+    const parsed = transformationSchema.safeParse(request.body ?? {});
+    if (!parsed.success) return validationError(reply, parsed.error.issues);
+    const run = await managedServices.createTransformationRun(parsed.data);
+    return reply.status(201).send(run);
   });
 }
 

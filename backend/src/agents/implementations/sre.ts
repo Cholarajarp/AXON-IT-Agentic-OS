@@ -1,7 +1,7 @@
 import type { AgentExecutionInput } from '../types.js';
-import { SimulatedAgent } from './base.js';
+import { DeterministicAgent } from './base.js';
 
-export class SREAgent extends SimulatedAgent {
+export class SREAgent extends DeterministicAgent {
   name = 'SREAgent';
   description = 'Monitors services, manages alerts, executes runbooks';
   version = '1.0.0';
@@ -25,6 +25,6 @@ export class SREAgent extends SimulatedAgent {
     };
   }
 
-  protected getSimulatedDurationMs() { return 1500 + Math.random() * 1000; }
-  protected getSimulatedCost() { return 0.003 + Math.random() * 0.002; }
+  protected estimateDurationMs() { return 2000; }
+  protected estimateCost() { return 0.004; }
 }

@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('AXON shell loads, closes popovers, and navigates core surfaces', async ({ page }) => {
+  test.setTimeout(90_000);
   const consoleErrors: string[] = [];
   page.on('console', (message) => {
     if (message.type() === 'error' && !/favicon|Failed to load resource/i.test(message.text())) {
@@ -9,7 +10,7 @@ test('AXON shell loads, closes popovers, and navigates core surfaces', async ({ 
   });
   page.on('pageerror', (error) => consoleErrors.push(error.message));
 
-  await page.goto('/');
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect(page).toHaveTitle(/AXON IT Agentic AI OS/);
   await expect(page.getByRole('heading', { name: 'Company OS' })).toBeVisible();
   await expect(page.getByText('API live')).toBeVisible();

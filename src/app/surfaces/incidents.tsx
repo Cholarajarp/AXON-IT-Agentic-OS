@@ -3,6 +3,7 @@ import { AlertCircle, RefreshCw, Clock, CheckCircle2, Activity, Shield, Zap } fr
 import { Card, PageHeader, Button, Kpi, SeverityBadge, RightPanel } from "../components/ui/primitives";
 import { useIncidents, useResolveIncident } from "../lib/queries";
 import type { Incident } from "../lib/store";
+import { useToast } from "../lib/toast";
 
 const stateStyles = {
   ACTIVE: { label: "Active", color: "text-s-critical", icon: AlertCircle },
@@ -20,6 +21,7 @@ function getStateStyle(state: string) {
 export function Incidents() {
   const { data: incidents = [], isLoading, isError, error, refetch } = useIncidents();
   const resolveIncidentMutation = useResolveIncident();
+  const { toast } = useToast();
   const [selected, setSelected] = useState<Incident | null>(null);
   const [tab, setTab] = useState<"active" | "resolved" | "all">("active");
 
@@ -38,6 +40,25 @@ export function Incidents() {
   const mttr = resolved.length > 0
     ? Math.round(resolved.reduce((sum, i) => sum + ((i.resolvedAt || 0) - i.startedAt), 0) / resolved.length / 60000)
     : 0;
+
+  const exportIncidents = async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify({ exportedAt: new Date().toISOString(), incidents: filtered }, null, 2));
+      toast({ kind: "success", title: "Incidents exported", description: `${filtered.length} incident records copied to clipboard.` });
+    } catch {
+      toast({ kind: "error", title: "Export failed", description: "Clipboard access was blocked by the browser." });
+    }
+  };
+
+  const copyRunbooks = async () => {
+    const runbook = filtered.map(generateRunbook).join("\n\n---\n\n");
+    try {
+      await navigator.clipboard.writeText(runbook || "No incidents in the current filter.");
+      toast({ kind: "success", title: "Runbooks copied", description: `${filtered.length} runbook section${filtered.length === 1 ? "" : "s"} copied.` });
+    } catch {
+      toast({ kind: "error", title: "Copy failed", description: "Clipboard access was blocked by the browser." });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -79,8 +100,8 @@ export function Incidents() {
         description="Active and resolved incidents with SRE Agent timelines"
         action={
           <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm">Runbooks</Button>
-            <Button variant="secondary" size="sm">Export</Button>
+            <Button variant="secondary" size="sm" onClick={copyRunbooks}>Runbooks</Button>
+            <Button variant="secondary" size="sm" onClick={exportIncidents}>Export</Button>
           </div>
         }
       />
@@ -101,7 +122,7 @@ export function Incidents() {
                 key={t}
                 onClick={() => setTab(t)}
                 className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                  tab === t ? "bg-s-surface text-s-primary shadow-sm" : "text-s-secondary hover:text-s-primary"
+                  tab === t ? "bg-s-surface text-s-primary" : "text-s-secondary hover:text-s-primary"
                 }`}
               >
                 {t === "active" ? `Active (${active.length})` : t === "resolved" ? `Resolved (${resolved.length})` : `All (${incidents.length})`}
@@ -121,6 +142,10 @@ export function Incidents() {
         {selected && (
           <IncidentDetail
             incident={selected}
+            onCopy={async (text, title) => {
+              await navigator.clipboard.writeText(text);
+              toast({ kind: "success", title, description: `${selected.id} copied to clipboard.` });
+            }}
             onResolve={() => {
               resolveIncidentMutation.mutate(selected.id);
               setSelected(null);
@@ -165,7 +190,7 @@ function IncidentRow({ incident, onClick }: { incident: Incident; onClick: () =>
   );
 }
 
-function IncidentDetail({ incident, onResolve }: { incident: Incident; onResolve: () => void }) {
+function IncidentDetail({ incident, onResolve, onCopy }: { incident: Incident; onResolve: () => void; onCopy: (text: string, title: string) => Promise<void> }) {
   const style = getStateStyle(incident.state);
   const elapsed = Math.floor((Date.now() - incident.startedAt) / 60000);
 
@@ -236,8 +261,8 @@ function IncidentDetail({ incident, onResolve }: { incident: Incident; onResolve
             Mark Resolved
           </Button>
         )}
-        <Button variant="secondary" size="sm">View Runbook</Button>
-        <Button variant="secondary" size="sm">Post-Mortem</Button>
+        <Button variant="secondary" size="sm" onClick={() => void onCopy(generateRunbook(incident), "Runbook copied")}>View Runbook</Button>
+        <Button variant="secondary" size="sm" onClick={() => void onCopy(generatePostMortem(incident), "Post-mortem copied")}>Post-Mortem</Button>
       </div>
     </div>
   );
@@ -270,4 +295,38 @@ function generateTimeline(incident: Incident) {
   }
 
   return events;
+}
+
+function generateRunbook(incident: Incident): string {
+  return [
+    `# Runbook: ${incident.title}`,
+    `Incident: ${incident.id}`,
+    `Severity: ${incident.severity}`,
+    `State: ${incident.state}`,
+    `Affected: ${incident.affected.join(", ") || "none"}`,
+    "",
+    "1. Confirm current SLO and customer impact.",
+    "2. Check recent deployments, feature flags, and dependency health.",
+    "3. Use SREAgent trace correlation to isolate the failing service.",
+    "4. Apply the lowest-risk reversible remediation.",
+    "5. Verify recovery and record evidence in the audit ledger.",
+  ].join("\n");
+}
+
+function generatePostMortem(incident: Incident): string {
+  return [
+    `# Post-mortem: ${incident.title}`,
+    `Incident: ${incident.id}`,
+    `Resolved: ${incident.resolvedAt ? new Date(incident.resolvedAt).toISOString() : "not resolved"}`,
+    "",
+    "## Impact",
+    `${incident.affected.length} service${incident.affected.length === 1 ? "" : "s"} affected.`,
+    "",
+    "## Timeline",
+    ...generateTimeline(incident).map((event) => `- ${event.time}: ${event.title} - ${event.description}`),
+    "",
+    "## Follow-ups",
+    "- Add regression signal to monitoring.",
+    "- Attach remediation evidence to the trust ledger.",
+  ].join("\n");
 }

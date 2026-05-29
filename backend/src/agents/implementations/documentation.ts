@@ -1,7 +1,7 @@
 import type { AgentExecutionInput } from '../types.js';
-import { SimulatedAgent } from './base.js';
+import { DeterministicAgent } from './base.js';
 
-export class DocumentationAgent extends SimulatedAgent {
+export class DocumentationAgent extends DeterministicAgent {
   name = 'DocumentationAgent';
   description = 'Writes documentation, API docs, changelogs, knowledge articles';
   version = '1.0.0';
@@ -25,6 +25,6 @@ export class DocumentationAgent extends SimulatedAgent {
     };
   }
 
-  protected getSimulatedDurationMs() { return 1800 + Math.random() * 800; }
-  protected getSimulatedCost() { return 0.006 + Math.random() * 0.003; }
+  protected estimateDurationMs() { return 2200; }
+  protected estimateCost() { return 0.0075; }
 }

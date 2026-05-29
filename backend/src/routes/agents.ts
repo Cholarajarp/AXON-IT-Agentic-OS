@@ -1,9 +1,20 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { z } from 'zod';
 import { sql } from '../db/connection.js';
 import type { AgentInstance } from '../types/domain.js';
 import { PIPELINE_STEPS } from '../agents/pipeline.js';
 import { agentRegistry } from '../agents/registry.js';
+import { runtimeEnforcer } from '../agents/runtime-enforcer.js';
 import { skillRegistry } from '../services/skill-registry.js';
+
+const pipelineProbeSchema = z.object({
+  workflowId: z.string().min(1).default('wf_pipeline_probe'),
+  taskId: z.string().min(1).default('task_pipeline_probe'),
+  taskName: z.string().min(1).default('PipelineProbeAgent'),
+  description: z.string().min(1).default('Run a no-side-effect agent pipeline probe.'),
+  tenantId: z.string().min(1).default('tenant_default'),
+  input: z.record(z.unknown()).default({ probe: true }),
+});
 
 export async function registerAgentRoutes(app: FastifyInstance) {
   app.get('/agents', async () => {
@@ -59,6 +70,21 @@ export async function registerAgentRoutes(app: FastifyInstance) {
     steps: PIPELINE_STEPS,
     total: PIPELINE_STEPS.length,
   }));
+
+  app.post('/agents/pipeline/probe', async (request, reply) => {
+    const parsed = pipelineProbeSchema.safeParse(request.body ?? {});
+    if (!parsed.success) {
+      return reply.status(400).send({
+        error: 'ValidationError',
+        message: 'Invalid agent pipeline probe',
+        issues: parsed.error.issues,
+      });
+    }
+
+    const { tenantId, ...input } = parsed.data;
+    const result = await runtimeEnforcer.enforce({ ...input, signal: new AbortController().signal }, tenantId, { probe: true });
+    return reply.status(result.aborted ? 409 : 201).send(result);
+  });
 }
 
 function mapAgent(row: Record<string, unknown>): AgentInstance {

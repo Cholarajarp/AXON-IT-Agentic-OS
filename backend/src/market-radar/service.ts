@@ -1,9 +1,17 @@
 import { nanoid } from 'nanoid';
+import { artifactService } from '../artifacts/index.js';
 import { missionControl } from '../mission-control/index.js';
+import { DurableJsonStore } from '../services/durable-json-store.js';
+import { trustLedger } from '../trust-ledger/index.js';
 import type {
   CapabilityArea,
   CapabilityGap,
+  CompetitiveBenchmarkReport,
+  CompetitiveCapability,
+  CompetitorProfile,
   MarketBuildPack,
+  MoatActivationRun,
+  MoatLane,
   MarketRadarInput,
   MarketRadarLaunch,
   MarketRadarReport,
@@ -11,6 +19,162 @@ import type {
 } from './types.js';
 
 const reports = new Map<string, MarketRadarReport>();
+const activationStore = new DurableJsonStore<MoatActivationRun[]>('market-radar/moat-activation-runs.json', []);
+
+const competitorProfiles: CompetitorProfile[] = [
+  {
+    id: 'servicenow-ai-platform',
+    name: 'ServiceNow AI Platform',
+    category: 'itsm-ai',
+    currentEdge: 'Deep ITSM/ITOM workflow footprint, AI Control Tower positioning, Workflow Data Fabric, and enterprise agent interoperability with Google Cloud.',
+    weakSpot: 'Strong inside the ServiceNow estate, but less natural for repo-native full SDLC, customer delivery packaging, and code-to-release evidence loops.',
+    axonCounter: 'Unify SDLC, ITSM, database, browser QA, release, FinOps, and signed evidence as one delivery operating system.',
+    sourceUrl: 'https://newsroom.servicenow.com/press-releases/details/2026/ServiceNow-and-Google-Cloud-unite-AI-agents-for-autonomous-enterprise-operations/default.aspx',
+  },
+  {
+    id: 'atlassian-rovo-jsm',
+    name: 'Atlassian Rovo and Jira Service Management',
+    category: 'itsm-ai',
+    currentEdge: 'Organizational knowledge search, chat, agents, Studio, and Jira Service Management incident/request workflows.',
+    weakSpot: 'Excellent collaboration layer, but agent execution, release evidence, model FinOps, and autonomous implementation loops are not one integrated IT-service software OS.',
+    axonCounter: 'Make every service request traceable to autonomous build, verification, rollback, customer report, and compliance artifacts.',
+    sourceUrl: 'https://www.atlassian.com/software/rovo',
+  },
+  {
+    id: 'github-copilot-coding-agent',
+    name: 'GitHub Copilot Coding Agent',
+    category: 'software-agent',
+    currentEdge: 'Issue-to-PR coding inside GitHub with enterprise controls and GitHub Actions-backed environments.',
+    weakSpot: 'Powerful for code contribution, but not broad enough alone for ITSM, managed services, compliance, progressive delivery, and customer-facing operations.',
+    axonCounter: 'Treat GitHub as one entry point while AXON owns the full mission loop from idea to operated service.',
+    sourceUrl: 'https://github.com/newsroom/press-releases/coding-agent-for-github-copilot',
+  },
+  {
+    id: 'ibm-agentic-governance',
+    name: 'IBM Agentic AI Governance',
+    category: 'governance',
+    currentEdge: 'Clear enterprise playbook around model evaluations, responsible AI checks, runtime policy, observability, and incident response.',
+    weakSpot: 'Governance guidance is not itself a production execution layer for building and operating software.',
+    axonCounter: 'Turn governance into mandatory runtime gates, signed trust ledger records, and launch blockers attached to every mission.',
+    sourceUrl: 'https://www.ibm.com/think/insights/agentic-ai-governance-playbook',
+  },
+  {
+    id: 'agent-observability-market',
+    name: 'Agent Observability Vendors',
+    category: 'observability',
+    currentEdge: 'Fast-moving focus on traces, forensic visibility, agent behavior monitoring, and machine-consumable operations data.',
+    weakSpot: 'Observability alone lacks autonomous repair authority, product context, release control, and customer delivery accountability.',
+    axonCounter: 'Use observability as agent fuel: every trace becomes policy evidence, a repair mission, or a regression eval.',
+    sourceUrl: 'https://www.techradar.com/pro/observability-was-built-for-humans-ai-agents-need-something-different',
+  },
+];
+
+const competitiveCapabilities: CompetitiveCapability[] = [
+  capability(
+    'agent-control-plane',
+    'Agent control plane and governance',
+    'governance',
+    'Central agent inventory, identity, permissions, policy, audit, and enterprise-wide controls.',
+    ['ServiceNow AI Control Tower', 'GitHub Copilot enterprise controls', 'IBM governance playbook'],
+    ['Policies surface with create/simulate/deprecate', '13-step agent/tool enforcement pipeline', 'audit and trust ledger', 'settings provider controls'],
+    86,
+    95,
+    'Unify agent identity, policy bundles, approvals, and runtime evidence into one control-plane screen.',
+    'Ship Agent Control Plane: agent identity, scoped permissions, policy bundles, kill switch, and per-agent evidence ledger.',
+    '/policies',
+  ),
+  capability(
+    'repo-native-sdlc',
+    'Repo-native SDLC execution',
+    'agent-runtime',
+    'Issue-to-PR style coding agents with isolated environments, tests, diffs, and review handoff.',
+    ['GitHub Copilot Coding Agent', 'Codex', 'Claude Code', 'Cursor'],
+    ['Agent Projects execution fabric', 'workspace commands', 'delivery packs', 'browser evidence hooks'],
+    82,
+    94,
+    'Needs GitHub/IDE/CLI entry points and PR-native review packaging to match where engineers already work.',
+    'Add GitHub issue/PR intake, CLI mission submit, PR package publishing, and IDE status contracts.',
+    '/agent-projects',
+  ),
+  capability(
+    'itsm-itom-resolution',
+    'ITSM and ITOM autonomous resolution',
+    'deployment',
+    'Detect, resolve, prevent, and report IT incidents across service desk, operations, and change workflows.',
+    ['ServiceNow', 'Jira Service Management with Rovo'],
+    ['Service Desk', 'Managed Services', 'Incidents', 'SRE timeline', 'Mission Control handoffs'],
+    78,
+    94,
+    'Incident-to-repair is present but needs closed-loop ticket creation, SLO burn, and auto-remediation evidence.',
+    'Create SLO-driven incident autopilot: detect, create ticket, run repair mission, verify recovery, publish post-mortem.',
+    '/incidents',
+  ),
+  capability(
+    'interoperability',
+    'Agent interoperability and tool ecosystem',
+    'marketplace',
+    'MCP/A2A-style agent discovery, tool connectors, secure handoffs, and long-running task envelopes.',
+    ['ServiceNow plus Google Cloud', 'Atlassian Rovo Studio', 'GitHub Agent HQ ecosystem'],
+    ['Integrations registry', 'Tools registry', 'Agentic Mesh blueprints', 'Agent Blackboard'],
+    80,
+    93,
+    'Tools and mesh exist, but external agent cards, task envelopes, and connector marketplace packaging should be first-class.',
+    'Ship agent cards, task-envelope API, connector certification, and MCP server packaging for every major module.',
+    '/integrations',
+  ),
+  capability(
+    'proof-ledger',
+    'Signed proof, compliance, and customer evidence',
+    'evidence',
+    'Every autonomous action must leave reviewable, exportable, tamper-evident proof.',
+    ['IBM governance patterns', 'GitHub enterprise audit controls', 'ServiceNow governance'],
+    ['Trust Ledger', 'Evidence Explorer', 'Audit verification', 'Release Command reports', 'policy simulation'],
+    90,
+    97,
+    'Strongest AXON wedge. Needs every mission subsystem to emit consistent evidence manifests by default.',
+    'Make proof mandatory: every mission phase emits signed evidence, policy decision, artifact hash, and customer-readable summary.',
+    '/trust-ledger',
+  ),
+  capability(
+    'model-finops-routing',
+    'Model FinOps, routing, and quality gates',
+    'finops',
+    'Provider routing, budget limits, context caching, eval gates, sovereign mode, and cost attribution.',
+    ['Enterprise Copilot data residency', 'Vertex/Gemini enterprise context patterns', 'Agentic AI governance vendors'],
+    ['Models route probe', 'Evaluation Lab', 'Cost ledger', 'Model FinOps reports', 'budget policy'],
+    88,
+    96,
+    'Route policy exists, but the operator needs automatic premium escalation rules and margin guardrails by customer/project.',
+    'Activate model autopilot: task routing, cache plan, budget hard stops, critic escalation, and margin protection.',
+    '/agentic-finops',
+  ),
+  capability(
+    'browser-release-ops',
+    'Browser proof and progressive release operations',
+    'browser-qa',
+    'Real browser journeys, accessibility checks, deployment gates, canary rollout, rollback, and SLO verification.',
+    ['AI app builders', 'deployment monitoring platforms', 'ITOM products'],
+    ['Preview QA', 'Release Command', 'Production Readiness', 'Checkpoints', 'Database Pipeline'],
+    79,
+    95,
+    'Preview QA and release plans need a tighter hard gate from browser proof to canary to rollback.',
+    'Ship progressive delivery fabric: browser traces, canary gates, SLO burn, rollback command, and release blocker policy.',
+    '/release-command',
+  ),
+  capability(
+    'customer-delivery-os',
+    'Customer delivery and managed-service packaging',
+    'ux',
+    'Outcome packaging, pricing, SLA, support plan, customer report, and renewal-ready evidence.',
+    ['ServiceNow managed workflow ecosystem', 'Atlassian service management', 'AI software agencies'],
+    ['Customer Delivery', 'Managed Services', 'Executive', 'Mission Control', 'Release Command'],
+    84,
+    94,
+    'This is AXON-s strongest business wedge but needs pricing, SLA, and evidence to become a repeatable product line.',
+    'Turn each mission into a customer delivery account with SLA, margin, proof pack, support runbook, and renewal actions.',
+    '/customer-delivery',
+  ),
+];
 
 const sourceSignals: MarketSignal[] = [
   signal('cloud-coding-agent', 'internal:reference/cloud-coding-agent', 'Cloud coding agents use repo access, PR creation, per-task sandbox containers, and parallel background work.', 'Make coding agents persistent, asynchronous, test-capable, and connected to Git workflows.', 'AXON must go beyond coding by connecting sandbox execution to product, database, QA, security, release, and customer delivery evidence.', ['sandbox', 'agent-runtime', 'evidence'], 94, 'recent'),
@@ -134,7 +298,7 @@ const buildPackCatalog: MarketBuildPack[] = [
     status: 'ready-for-mission-control',
     urgency: 'P0',
     whyNow: 'Enterprise agent platforms are converging on coordinated agent teams with explicit communication protocols, not one monolithic agent.',
-    userBenefit: 'Users get a real IT-company workflow: planner, researchers, builders, critics, database, security, SRE, release, and customer agents working with clear ownership.',
+    userBenefit: 'Users get a real IT-service software workflow: planner, researchers, builders, critics, database, security, SRE, release, and customer agents working with clear ownership.',
     moat: 'AXON can own the whole delivery operating model: topology, handoffs, shared state, cost budgets, critic loops, human gates, and signed evidence.',
     modules: ['Agentic Mesh', 'Agent Blackboard', 'Mission Control', 'Trust Ledger', 'Model FinOps'],
     ownerAgents: ['AgenticCoordinatorAgent', 'FinOpsAgent', 'CriticAgent', 'ReleaseAgent'],
@@ -149,6 +313,42 @@ const buildPackCatalog: MarketBuildPack[] = [
 export class MarketRadarService {
   listReports(): MarketRadarReport[] {
     return Array.from(reports.values()).sort((a, b) => b.generatedAt.localeCompare(a.generatedAt));
+  }
+
+  getCompetitiveBenchmark(): CompetitiveBenchmarkReport {
+    const capabilities = competitiveCapabilities
+      .map((item) => ({ ...item }))
+      .sort((a, b) => (b.targetScore - b.score) - (a.targetScore - a.score));
+    const moatLanes = buildMoatLanes(capabilities);
+    const overallScore = Math.round(capabilities.reduce((sum, item) => sum + item.score, 0) / Math.max(capabilities.length, 1));
+    return {
+      id: `comp_${new Date().toISOString().slice(0, 10)}`,
+      generatedAt: new Date().toISOString(),
+      sourceWindow: 'Current public market scan on 2026-05-29 plus internal AXON capability inventory.',
+      thesis: 'The market is converging on agent control planes, ITSM-native agents, coding agents, interoperability, observability, and governance. AXON can beat point competitors by becoming the evidence-backed IT-service software OS that builds, verifies, releases, operates, and packages customer proof in one loop.',
+      overallScore,
+      competitors: competitorProfiles,
+      capabilities,
+      moatLanes,
+      topMoves: capabilities.slice(0, 5).map((capability, index) => ({
+        order: index + 1,
+        capabilityId: capability.id,
+        move: capability.nextMove,
+        expectedLift: capability.targetScore - capability.score,
+      })),
+      sourceNotes: [
+        'ServiceNow and Google Cloud emphasize autonomous enterprise operations, shared governance, data fabric, and A2A/A2UI/MCP interoperability.',
+        'Atlassian Rovo emphasizes organizational search, chat, agents, Studio, and Jira Service Management resolution workflows.',
+        'GitHub Copilot Coding Agent emphasizes secure GitHub-native issue-to-PR execution with enterprise controls.',
+        'IBM governance guidance emphasizes model evaluation, responsible AI checks, runtime policy, observability, and incident response.',
+        'Agent observability coverage emphasizes forensic visibility because autonomous systems need machine-consumable operational traces.',
+      ],
+    };
+  }
+
+  listMoatActivationRuns(): MoatActivationRun[] {
+    const normalized = activationStore.read().map((run) => normalizeMoatActivationRun(run));
+    return normalized.sort((a, b) => b.generatedAt.localeCompare(a.generatedAt));
   }
 
   getReport(id: string): MarketRadarReport | undefined {
@@ -181,7 +381,7 @@ export class MarketRadarService {
       targetUser,
       generatedAt: new Date().toISOString(),
       marketThesis: 'The 2026 agent market is moving from chat to governed action: async agents, sandboxed execution, browser self-testing, connectors, enterprise security, deployment operations, and replayable evidence.',
-      summary: `AXON should win by becoming the integrated IT company OS: build apps, verify them, secure data, deploy safely, operate services, and package customer-ready proof from one mission loop.`,
+      summary: `AXON should win by becoming the integrated IT-service software OS: build apps, verify them, secure data, deploy safely, operate services, and package customer-ready proof from one mission loop.`,
       moatScore,
       signals,
       gaps,
@@ -221,6 +421,319 @@ export class MarketRadarService {
       score: run.score,
     };
   }
+
+  async createMoatActivationRun(input: { tactic?: string; maxMissions?: number; tenantId?: string } = {}): Promise<MoatActivationRun> {
+    const benchmark = this.getCompetitiveBenchmark();
+    const maxMissions = Math.max(1, Math.min(input.maxMissions ?? 3, 5));
+    const capabilities = benchmark.capabilities
+      .filter((capability) => capability.score < capability.targetScore)
+      .slice(0, maxMissions);
+
+    const missionRuns = [];
+    for (const capability of capabilities) {
+      const run = await missionControl.createRun({
+        tenantId: input.tenantId ?? 'tenant_default',
+        customerName: 'AXON Competitive Moat',
+        mission: `${capability.nextMove}\n\nCompetitive bar: ${capability.marketBar}\nAXON proof today: ${capability.axonProof.join('; ')}\nAcceptance proof required: ${capability.gap}`,
+        environment: capability.targetScore >= 95 ? 'staging' : 'preview',
+        regulated: true,
+        budgetUsd: 5000,
+        timelineDays: capability.targetScore >= 95 ? 14 : 21,
+        compliance: ['SOC 2', 'ISO 27001'],
+        integrations: ['GitHub', 'Jira Service Management', 'ServiceNow', 'MCP', 'Slack'],
+      });
+      missionRuns.push({
+        capabilityId: capability.id,
+        capabilityTitle: capability.title,
+        missionControlRunId: run.id,
+        releaseMissionId: run.releaseMissionId,
+        status: run.status,
+        score: run.score,
+        proof: [
+          `Mission Control run ${run.id}`,
+          `Release mission ${run.releaseMissionId}`,
+          `FinOps report ${run.finOpsReportId}`,
+          `Trust records ${run.trustRecordIds.length}`,
+        ],
+      });
+    }
+
+    const stageGates = buildActivationStageGates(capabilities, missionRuns);
+    const riskRegister = buildActivationRisks(capabilities);
+    const progress = {
+      completedGates: stageGates.filter((gate) => gate.status === 'pass').length,
+      totalGates: stageGates.length,
+      score: Math.round(stageGates.reduce((sum, gate) => sum + gate.score, 0) / Math.max(stageGates.length, 1)),
+    };
+    const artifact = artifactService.put({
+      tenantId: input.tenantId ?? 'tenant_default',
+      kind: 'release-pack',
+      name: `Competitive moat activation ${benchmark.id}`,
+      content: {
+        benchmarkId: benchmark.id,
+        tactic: input.tactic?.trim() || 'Close the largest competitor gaps first while turning every improvement into customer-readable proof.',
+        sourceWindow: benchmark.sourceWindow,
+        competitors: benchmark.competitors.map((competitor) => ({
+          id: competitor.id,
+          name: competitor.name,
+          sourceUrl: competitor.sourceUrl,
+          axonCounter: competitor.axonCounter,
+        })),
+        capabilities: capabilities.map((capability) => ({
+          id: capability.id,
+          title: capability.title,
+          marketBar: capability.marketBar,
+          gap: capability.gap,
+          nextMove: capability.nextMove,
+        })),
+        missionRuns,
+        stageGates,
+        riskRegister,
+      },
+      metadata: {
+        benchmarkId: benchmark.id,
+        capabilityIds: capabilities.map((capability) => capability.id),
+      },
+    });
+    const trustRecord = trustLedger.append({
+      tenantId: input.tenantId ?? 'tenant_default',
+      kind: 'market-signal',
+      actor: 'MarketRadarAgent',
+      actorType: 'agent',
+      subject: `Competitive moat activation ${benchmark.id}`,
+      summary: `Created ${missionRuns.length} competitive moat mission runs with ${stageGates.length} stage gates and ${riskRegister.length} risks.`,
+      risk: capabilities.some((capability) => capability.targetScore >= 95) ? 'high' : 'medium',
+      source: 'Market Radar competitive benchmark',
+      artifacts: [artifact.id, ...missionRuns.flatMap((run) => [run.missionControlRunId, run.releaseMissionId])],
+      metadata: {
+        benchmarkId: benchmark.id,
+        overallScore: benchmark.overallScore,
+        activationCapabilities: capabilities.map((capability) => capability.id),
+      },
+      controls: ['SOC2-CC7.2', 'SOC2-CC8.1', 'ISO27001-A.5.15'],
+    });
+
+    const activation: MoatActivationRun = {
+      id: `moat_${nanoid(10)}`,
+      reportId: benchmark.id,
+      generatedAt: new Date().toISOString(),
+      status: 'created',
+      progress,
+      tactic: input.tactic?.trim() || 'Close the largest competitor gaps first while turning every improvement into customer-readable proof.',
+      summary: `Created ${missionRuns.length} Mission Control run${missionRuns.length === 1 ? '' : 's'} from the live competitive benchmark.`,
+      stageGates,
+      proofArtifacts: [
+        {
+          id: artifact.id,
+          name: artifact.name,
+          kind: artifact.kind,
+          uri: artifact.uri,
+          sha256: artifact.sha256,
+          source: 'Artifact store',
+        },
+        {
+          id: trustRecord.id,
+          name: trustRecord.subject,
+          kind: trustRecord.kind,
+          uri: `trust-ledger://${trustRecord.id}`,
+          sha256: trustRecord.hash,
+          source: 'Trust Ledger',
+        },
+      ],
+      riskRegister,
+      missionControlRuns: missionRuns,
+      nextReviewAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    };
+
+    activationStore.write([activation, ...activationStore.read().map((run) => normalizeMoatActivationRun(run))].slice(0, 100));
+    return activation;
+  }
+}
+
+function normalizeMoatActivationRun(run: MoatActivationRun): MoatActivationRun {
+  const raw = run as Partial<MoatActivationRun>;
+  const missionControlRuns = (raw.missionControlRuns ?? []).map((mission) => ({
+    capabilityId: mission.capabilityId,
+    capabilityTitle: mission.capabilityTitle,
+    missionControlRunId: mission.missionControlRunId,
+    releaseMissionId: mission.releaseMissionId,
+    status: mission.status,
+    score: typeof mission.score === 'number' ? mission.score : 0,
+    proof: mission.proof ?? [
+      `Mission Control run ${mission.missionControlRunId}`,
+      `Release mission ${mission.releaseMissionId}`,
+    ],
+  }));
+  const matchedCapabilities = missionControlRuns
+    .map((mission) => competitiveCapabilities.find((capability) => capability.id === mission.capabilityId))
+    .filter((capability): capability is CompetitiveCapability => Boolean(capability));
+  const capabilities = matchedCapabilities.length ? matchedCapabilities : competitiveCapabilities.slice(0, Math.max(missionControlRuns.length, 1));
+  const stageGates = raw.stageGates ?? buildActivationStageGates(capabilities, missionControlRuns);
+  const completedGates = stageGates.filter((gate) => gate.status === 'pass').length;
+  const totalGates = stageGates.length;
+  const progress = raw.progress ?? {
+    completedGates,
+    totalGates,
+    score: Math.round(stageGates.reduce((sum, gate) => sum + gate.score, 0) / Math.max(totalGates, 1)),
+  };
+
+  return {
+    id: raw.id ?? `moat_${nanoid(10)}`,
+    reportId: raw.reportId ?? 'comp_legacy',
+    generatedAt: raw.generatedAt ?? new Date().toISOString(),
+    status: raw.status ?? 'created',
+    progress,
+    tactic: raw.tactic ?? 'Legacy activation imported into the competitive moat command center.',
+    summary: raw.summary ?? `Imported ${missionControlRuns.length} legacy Mission Control run${missionControlRuns.length === 1 ? '' : 's'}.`,
+    stageGates,
+    proofArtifacts: raw.proofArtifacts ?? [],
+    riskRegister: raw.riskRegister ?? buildActivationRisks(capabilities),
+    missionControlRuns,
+    nextReviewAt: raw.nextReviewAt ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+  };
+}
+
+function capability(
+  id: string,
+  title: string,
+  area: CapabilityArea,
+  marketBar: string,
+  competitorLeaders: string[],
+  axonProof: string[],
+  score: number,
+  targetScore: number,
+  gap: string,
+  nextMove: string,
+  route: string,
+): CompetitiveCapability {
+  return {
+    id,
+    title,
+    area,
+    marketBar,
+    competitorLeaders,
+    axonProof,
+    score,
+    targetScore,
+    gap,
+    nextMove,
+    route,
+  };
+}
+
+function buildMoatLanes(capabilities: CompetitiveCapability[]): MoatLane[] {
+  return [
+    {
+      id: 'outcome-os',
+      title: 'Outcome OS, not point agent',
+      winCondition: 'AXON owns the whole path from request to operated service, not one assistant slot.',
+      proof: ['Mission Control', 'Customer Delivery', 'Release Command', 'Managed Services'],
+      ownerModules: ['Mission Control', 'Customer Delivery', 'Managed Services'],
+      riskIfIgnored: 'Point competitors win a narrow workflow and reduce AXON to an orchestration dashboard.',
+      score: averageScore(capabilities, ['customer-delivery-os', 'itsm-itom-resolution', 'browser-release-ops']),
+    },
+    {
+      id: 'proof-ledger',
+      title: 'Proof ledger as trust moat',
+      winCondition: 'Every autonomous action produces signed, exportable evidence suitable for enterprise review.',
+      proof: ['Trust Ledger', 'Evidence Explorer', 'Audit Trail', 'Policy simulation'],
+      ownerModules: ['Trust Ledger', 'Evidence', 'Audit', 'Policies'],
+      riskIfIgnored: 'Security buyers will reject autonomous work that cannot explain itself.',
+      score: averageScore(capabilities, ['proof-ledger', 'agent-control-plane']),
+    },
+    {
+      id: 'agentic-mesh',
+      title: 'Agentic mesh with handoff contracts',
+      winCondition: 'Specialist agents coordinate with explicit task envelopes, budgets, critic loops, and human gates.',
+      proof: ['Agentic Mesh', 'Agent Blackboard', 'Pipeline', 'Models'],
+      ownerModules: ['Agentic Mesh', 'Pipeline', 'Models', 'Memory'],
+      riskIfIgnored: 'Single-agent experiences will look faster even if they fail on enterprise complexity.',
+      score: averageScore(capabilities, ['interoperability', 'repo-native-sdlc', 'agent-control-plane']),
+    },
+    {
+      id: 'cost-quality-autopilot',
+      title: 'Cost-quality autopilot',
+      winCondition: 'Every task is routed through cost, risk, quality, and sovereign constraints automatically.',
+      proof: ['Model FinOps', 'Cost', 'Evaluation Lab', 'Models'],
+      ownerModules: ['Agentic FinOps', 'Cost', 'Evaluations', 'Models'],
+      riskIfIgnored: 'Enterprise pilots stall when token spend and quality variance become unpredictable.',
+      score: averageScore(capabilities, ['model-finops-routing']),
+    },
+  ];
+}
+
+function averageScore(capabilities: CompetitiveCapability[], ids: string[]) {
+  const selected = capabilities.filter((capability) => ids.includes(capability.id));
+  return Math.round(selected.reduce((sum, capability) => sum + capability.score, 0) / Math.max(selected.length, 1));
+}
+
+function buildActivationStageGates(
+  capabilities: CompetitiveCapability[],
+  missionRuns: MoatActivationRun['missionControlRuns'],
+): MoatActivationRun['stageGates'] {
+  return capabilities.flatMap((capability) => {
+    const mission = missionRuns.find((run) => run.capabilityId === capability.id);
+    const gap = capability.targetScore - capability.score;
+    return [
+      {
+        id: `${capability.id}:market-bar`,
+        title: `${capability.title} market bar locked`,
+        ownerAgent: 'MarketRadarAgent',
+        status: 'pass' as const,
+        score: 100,
+        evidence: [capability.marketBar, ...capability.competitorLeaders],
+        nextAction: 'Keep source notes fresh before the next competitive review.',
+      },
+      {
+        id: `${capability.id}:execution`,
+        title: `${capability.title} execution run created`,
+        ownerAgent: 'MissionControlAgent',
+        status: mission ? 'pass' as const : 'block' as const,
+        score: mission ? Math.max(70, mission.score) : 0,
+        evidence: mission?.proof ?? ['Mission Control run missing'],
+        nextAction: mission ? `Drive ${mission.missionControlRunId} until release evidence is attached.` : 'Create a Mission Control run.',
+      },
+      {
+        id: `${capability.id}:proof`,
+        title: `${capability.title} proof package required`,
+        ownerAgent: 'ComplianceAgent',
+        status: gap <= 7 ? 'pass' as const : gap <= 14 ? 'warn' as const : 'block' as const,
+        score: Math.max(50, 100 - gap * 3),
+        evidence: capability.axonProof,
+        nextAction: capability.gap,
+      },
+    ];
+  });
+}
+
+function buildActivationRisks(capabilities: CompetitiveCapability[]): MoatActivationRun['riskRegister'] {
+  return capabilities.map((capability) => {
+    const gap = capability.targetScore - capability.score;
+    return {
+      id: `risk_${capability.id}`,
+      severity: gap >= 16 ? 'critical' : gap >= 10 ? 'high' : gap >= 6 ? 'medium' : 'low',
+      title: `${capability.title} gap could let point competitors win buyer mindshare.`,
+      mitigation: capability.nextMove,
+      ownerAgent: ownerForCapability(capability.area),
+    };
+  });
+}
+
+function ownerForCapability(area: CapabilityArea) {
+  const owners: Record<CapabilityArea, string> = {
+    sandbox: 'SandboxKernelAgent',
+    'agent-runtime': 'AgenticCoordinatorAgent',
+    'browser-qa': 'QAAgent',
+    deployment: 'ReleaseAgent',
+    governance: 'ComplianceAgent',
+    security: 'SecurityAgent',
+    marketplace: 'IntegrationAgent',
+    ux: 'ProductStrategistAgent',
+    memory: 'MemoryAgent',
+    finops: 'FinOpsAgent',
+    evidence: 'TrustLedgerAgent',
+  };
+  return owners[area];
 }
 
 function signal(

@@ -150,7 +150,7 @@ export function CommandPalette({
   return (
     <div className="fixed inset-0 z-[55] flex items-start justify-center pt-24 px-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-s-elevated border border-s-border rounded-lg shadow-2xl w-full max-w-xl overflow-hidden">
+      <div className="relative bg-s-elevated border border-s-border rounded-lg w-full max-w-xl overflow-hidden">
         <div className="flex items-center gap-2.5 px-4 py-3 border-b border-s-border">
           <Search size={15} className="text-s-muted" />
           <input

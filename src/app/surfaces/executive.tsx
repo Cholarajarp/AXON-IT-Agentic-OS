@@ -1,6 +1,6 @@
 import { TrendingUp, TrendingDown, Shield, AlertTriangle } from "lucide-react";
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, AreaChart, Area } from "recharts";
-import { Card, CardHeader, PageHeader, Kpi, SeverityBadge } from "../components/ui/primitives";
+import { Card, CardHeader, EmptyState, PageHeader, Kpi, SeverityBadge } from "../components/ui/primitives";
 import { useExecutive } from "../lib/queries";
 
 export function Executive() {
@@ -12,6 +12,14 @@ export function Executive() {
   const autoResolved = metrics?.autoResolved ?? 0;
   const weeklyVelocity = metrics?.weeklyVelocity ?? [];
   const risks = metrics?.risks ?? [];
+  const insight = metrics?.insight;
+  const lastFour = weeklyVelocity.slice(-4);
+  const previousFour = weeklyVelocity.slice(-8, -4);
+  const recentFeatures = lastFour.reduce((total, item) => total + item.features, 0);
+  const previousFeatures = previousFour.reduce((total, item) => total + item.features, 0);
+  const velocityDelta = previousFeatures > 0 ? Math.round(((recentFeatures - previousFeatures) / previousFeatures) * 100) : 0;
+  const automatedRecent = lastFour.reduce((total, item) => total + item.automated, 0);
+  const automationRate = recentFeatures > 0 ? Math.round((automatedRecent / recentFeatures) * 100) : 0;
 
   return (
     <div>
@@ -24,30 +32,30 @@ export function Executive() {
         <Kpi
           label="Features Delivered"
           value={featuresDelivered.toString()}
-          trend="up"
-          delta="+8 vs last quarter"
-          hint="This quarter"
+          trend={velocityDelta >= 0 ? "up" : "down"}
+          delta={`${velocityDelta >= 0 ? "+" : ""}${velocityDelta}% vs prior 4 weeks`}
+          hint="Completed workflows"
         />
         <Kpi
           label="Cost vs Baseline"
           value={`${costVsBaseline}%`}
-          trend="down"
-          delta="$24K saved"
-          hint="Manual baseline"
+          trend={costVsBaseline <= 0 ? "down" : "up"}
+          delta={costVsBaseline <= 0 ? "Below previous 7 days" : "Above previous 7 days"}
+          hint="Model and workflow spend"
         />
         <Kpi
           label="Compliance Score"
           value={`${complianceScore}%`}
-          trend="up"
-          delta="+3% this month"
+          trend={complianceScore >= 90 ? "up" : "down"}
+          delta={complianceScore >= 90 ? "Evidence healthy" : "Evidence gaps open"}
           hint="Across all frameworks"
         />
         <Kpi
           label="Auto-Resolved"
           value={autoResolved.toString()}
-          trend="up"
-          delta="72% auto-rate"
-          hint="Incidents this month"
+          trend={automationRate >= 50 ? "up" : "down"}
+          delta={`${automationRate}% recent automation`}
+          hint="Resolved incidents"
         />
       </div>
 
@@ -135,6 +143,13 @@ export function Executive() {
                 </div>
               </div>
             ))}
+            {risks.length === 0 && (
+              <EmptyState
+                icon={<Shield size={18} />}
+                title="No executive risks"
+                description="Active incidents, missing evidence, and cost variance risks will appear here."
+              />
+            )}
           </div>
         </Card>
       </div>
@@ -144,36 +159,34 @@ export function Executive() {
         <div className="p-5">
           <div className="p-4 rounded-lg bg-s-base border border-s-border">
             <div className="text-s-primary text-[13px] leading-relaxed">
-              <p className="mb-3">
-                <strong>Week 12 Summary:</strong> Delivery velocity reached 7 features/week (6 automated) — a 40% increase over W1 baseline.
-                The agent fleet processed 34 goals end-to-end this quarter with a 94% compliance score.
-              </p>
-              <p className="mb-3">
-                <strong>Key wins:</strong> KYC automation reduced onboarding time from 3 days to 4 hours. Auto-remediation resolved 72% of P1/P2 incidents
-                without human intervention, improving MTTR from 45min to 12min.
-              </p>
-              <p>
-                <strong>Attention needed:</strong> Payment gateway memory leak (P0) is recurring — root cause analysis suggests connection pool exhaustion
-                under peak load. Infrastructure team has been notified. SOC 2 CC8.1 gap requires additional change management controls before next audit window.
-              </p>
+              <p className="mb-3"><strong>{insight?.headline ?? "No executive signal yet"}</strong></p>
+              <p className="mb-3">{insight?.summary ?? "Submit delivery workflows and collect evidence to generate operating insight."}</p>
+              <p className="mb-3"><strong>Wins:</strong> {(insight?.wins ?? ["No wins recorded yet."]).join(" · ")}</p>
+              <p><strong>Attention:</strong> {(insight?.attention ?? ["No attention items recorded yet."]).join(" · ")}</p>
             </div>
           </div>
           <div className="flex items-center gap-4 mt-3 flex-wrap">
-            <span className="flex items-center gap-1 text-s-success text-[11px]">
-              <TrendingUp size={12} /> Velocity +40%
-            </span>
-            <span className="flex items-center gap-1 text-s-success text-[11px]">
-              <TrendingDown size={12} /> Cost -28%
-            </span>
-            <span className="flex items-center gap-1 text-s-success text-[11px]">
-              <Shield size={12} /> Compliance 94%
-            </span>
-            <span className="flex items-center gap-1 text-s-warning text-[11px]">
-              <AlertTriangle size={12} /> 1 P0 open
-            </span>
+            {(insight?.signals ?? []).map((signal) => (
+              <span key={signal.label} className={`flex items-center gap-1 text-[11px] ${signalClass(signal.tone)}`}>
+                {signalIcon(signal.tone)} {signal.label} {signal.value}
+              </span>
+            ))}
           </div>
         </div>
       </Card>
     </div>
   );
+}
+
+function signalClass(tone: 'success' | 'warning' | 'critical' | 'neutral') {
+  if (tone === 'success') return 'text-s-success';
+  if (tone === 'warning') return 'text-s-warning';
+  if (tone === 'critical') return 'text-s-critical';
+  return 'text-s-muted';
+}
+
+function signalIcon(tone: 'success' | 'warning' | 'critical' | 'neutral') {
+  if (tone === 'critical' || tone === 'warning') return <AlertTriangle size={12} />;
+  if (tone === 'success') return <TrendingUp size={12} />;
+  return <TrendingDown size={12} />;
 }

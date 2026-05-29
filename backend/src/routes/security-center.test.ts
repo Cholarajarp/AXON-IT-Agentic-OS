@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { registerSecurityCenterRoutes } from './security-center.js';
 
 describe('security center routes', () => {
-  it('blocks publishing when a secret is detected', async () => {
+  it('requires review when a committed credential assignment is detected', async () => {
     const app = Fastify();
     await app.register(registerSecurityCenterRoutes);
 
@@ -14,7 +14,7 @@ describe('security center routes', () => {
         files: [
           {
             path: 'src/server.ts',
-            content: "const apiKey = 'sk-1234567890abcdefghijklmnop';",
+            content: "const apiKey = 'test_secret_fixture_value_12345';",
           },
         ],
       },
@@ -22,13 +22,41 @@ describe('security center routes', () => {
 
     expect(response.statusCode).toBe(201);
     const body = response.json();
-    expect(body.status).toBe('blocked');
+    expect(body.status).toBe('needs-review');
     expect(body.findings).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ category: 'secret', blocksPublish: true }),
       ]),
     );
-    expect(body.findings[0].excerpt).not.toContain('abcdefghijklmnop');
+    expect(body.findings[0].excerpt).not.toContain('fixture_value_12345');
+
+    await app.close();
+  });
+
+  it('allows runtime environment secret references', async () => {
+    const app = Fastify();
+    await app.register(registerSecurityCenterRoutes);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/security-center/scan',
+      payload: {
+        files: [
+          {
+            path: 'src/github.ts',
+            content: 'const token = process.env.GITHUB_TOKEN; const secret = Deno.env.get("AXON_CONFIG_SECRET");',
+          },
+        ],
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    const body = response.json();
+    expect(body.findings).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ category: 'secret', title: 'Hard-coded secret assignment detected' }),
+      ]),
+    );
 
     await app.close();
   });

@@ -4,11 +4,12 @@ AXON IT Agentic OS is an AI-powered software delivery operating system. It turns
 
 The project is built as a full-stack command OS: a React web application, a Fastify backend, an Electron desktop shell, a model/provider router, a tool execution runtime, and production-readiness services for real IT delivery workflows.
 
-> Status: active engineering build. The application runs end-to-end in local development, supports degraded mode when PostgreSQL is not running, and includes production-readiness checks that block unsafe external claims when required runtime foundations are missing.
+> Status as of 2026-05-29: active engineering build. The application runs end-to-end in local development, supports degraded mode when PostgreSQL is not running, persists local connector/provider state under `.axon/state`, and includes production-readiness checks that block unsafe external claims when required runtime foundations are missing.
 
 ## Contents
 
 - [Product Scope](#product-scope)
+- [Current Status](#current-status)
 - [Core Capabilities](#core-capabilities)
 - [Architecture](#architecture)
 - [Data Flow](#data-flow)
@@ -44,6 +45,31 @@ AXON is designed for teams that want AI agents to behave like a managed IT deliv
 
 The goal is not to hide risk behind automation. The system makes risk, evidence, approvals, runtime health, and missing production foundations visible.
 
+## Current Status
+
+This repository is ready for continued feature development, not yet for external customer production claims.
+
+Latest completed audit and validation:
+
+- Build Studio, Mission Control, Company OS, Production Readiness, Preview QA, Executive Dashboard, Integrations, and Agent Runtime have active backend-backed flows.
+- Executive metrics now degrade honestly when PostgreSQL is unavailable instead of returning fake data or crashing.
+- Browser QA reports expose their evidence mode: `live-url`, `html-snapshot`, or `generated-fallback`.
+- Runtime agents produce deterministic repeatable evidence instead of random simulated metrics.
+- Integration connectors persist created tickets and connector configuration to durable local state.
+- Frontend generated IDs use UUID/counter-backed IDs instead of random-only fallbacks.
+- Production Runtime blocks broad external production readiness until database, artifact storage, signing, deployment adapter, browser worker, and secret manager gates pass.
+
+Latest local validation:
+
+```bash
+npm run typecheck
+npm test
+npm run build
+cd backend && npm run build
+```
+
+The latest test run passed 44 Vitest files and 129 tests.
+
 ## Core Capabilities
 
 | Area | Capability | Primary Surfaces |
@@ -57,6 +83,7 @@ The goal is not to hide risk behind automation. The system makes risk, evidence,
 | Tool runtime | Enforce sandbox, RBAC, rate limiting, policy, secret redaction, audit, and result sanitization on every tool call. | Tools, Safety Pipeline |
 | Database safety | Review SQL migrations for lock risk, rollback planning, backup readiness, and production rollout gates. | Database Pipeline |
 | API forge | Plan typed SDKs, CLI, MCP contracts, docs, and connector evidence from OpenAPI-style product APIs. | API Forge |
+| Integrations | Configure ServiceNow, Jira, PagerDuty, Datadog, Slack, and GitHub connector state with durable local tickets/configuration. | Integrations, Service Desk |
 | Security and governance | Scan secrets, dependencies, unsafe changes, policy decisions, evidence, and tamper-evident trust records. | Security, Trust Ledger, Audit |
 | Release and QA | Package browser QA, release gate score, evidence snapshot, customer report, and rollback plan. | Preview QA, Release Command |
 | Managed service delivery | Build ITSM, SLA, customer success, account, project, and service desk operating plans. | Managed Services, Customer Delivery, Service Desk |
@@ -83,10 +110,13 @@ flowchart TB
   Services --> Ledger[Trust ledger and audit chain]
   Services --> ArtifactStore[Artifact store]
   Services --> Settings[Workspace settings and provider config]
+  Services --> ConnectorRegistry[Connector registry]
 
   API --> Postgres[(PostgreSQL)]
   API --> Redis[(Redis)]
-  Services --> LocalState[(.axon local state)]
+  Services --> LocalState[(.axon durable local state)]
+  ConnectorRegistry --> ConnectorState[(connector configs and tickets)]
+  Settings --> ProviderState[(provider config state)]
   ArtifactStore --> LocalArtifacts[(.axon artifacts)]
 
   ModelRouter --> Anthropic[Anthropic]
@@ -98,12 +128,12 @@ flowchart TB
   ModelRouter --> VLLM[vLLM]
   ModelRouter --> LocalMock[Deterministic local eval provider]
 
-  Services --> GitHub[GitHub]
-  Services --> Jira[Jira]
-  Services --> ServiceNow[ServiceNow]
-  Services --> Slack[Slack]
-  Services --> Datadog[Datadog]
-  Services --> PagerDuty[PagerDuty]
+  ConnectorRegistry --> GitHub[GitHub]
+  ConnectorRegistry --> Jira[Jira]
+  ConnectorRegistry --> ServiceNow[ServiceNow]
+  ConnectorRegistry --> Slack[Slack]
+  ConnectorRegistry --> Datadog[Datadog]
+  ConnectorRegistry --> PagerDuty[PagerDuty]
 ```
 
 ### Backend Service Boundaries
@@ -139,6 +169,7 @@ flowchart LR
   Platform --> DatabasePipeline[Database Pipeline]
   Platform --> CodeIntel[Code Intelligence]
   Platform --> Integrations[Connector Registry]
+  Integrations --> ConnectorDurableState[Durable connector configs and tickets]
 ```
 
 ### Frontend Architecture
@@ -238,6 +269,10 @@ erDiagram
   trust_ledger_records ||--|| trust_ledger_records : hash_chains
   tenant_users ||--o{ workflows : owns
   integration_configs ||--o{ workflows : supports
+  integration_configs ||--o{ connector_tickets : creates
+  local_durable_state ||--o{ connector_tickets : persists
+  local_durable_state ||--o{ provider_configs : persists
+  browser_qa_reports ||--o{ artifact_objects : emits
   artifact_objects ||--o{ trust_ledger_records : referenced_by
 
   workflows {
@@ -273,6 +308,33 @@ erDiagram
     text uri
     text sha256
     bigint bytes
+  }
+
+  integration_configs {
+    text type PK
+    text base_url
+    boolean enabled
+    text tenant_id
+  }
+
+  connector_tickets {
+    text id PK
+    text external_id
+    text source
+    text status
+  }
+
+  provider_configs {
+    text provider PK
+    boolean enabled
+    text secret_mode
+  }
+
+  browser_qa_reports {
+    text id PK
+    text evidence_mode
+    text status
+    int score
   }
 ```
 
@@ -485,7 +547,7 @@ Common route families:
 | `/settings` | Workspace, security, notification, provider, and skill settings. |
 | `/models` | Provider catalog, provider config, health, invoke, stream, eval report. |
 | `/tools` | Tool registry, pipeline, stats, and governed execution. |
-| `/integrations` | Connector runtime status and configuration. |
+| `/integrations` | Connector runtime status, configuration, and durable local ticket state. |
 | `/agent-projects` | Agent project templates, dispatch, jobs, hooks, PR packages. |
 | `/mission-control` | End-to-end delivery missions. |
 | `/production-readiness` | Production service readiness reports and activations. |
@@ -625,9 +687,24 @@ Expected checks:
 - Playwright all-route audit passes.
 - Frontend and backend production builds complete.
 
+Latest audited result on this workspace:
+
+- `npm run typecheck` passed.
+- `npm test` passed with 44 files and 129 tests.
+- `npm run build` passed.
+- `cd backend && npm run build` passed.
+- Live smoke verified Executive degraded baseline, Browser QA evidence mode, and durable connector ticket persistence across a backend restart.
+
 ## Production Readiness
 
 Production Readiness intentionally separates "the code runs" from "the platform is safe to sell or operate for customers."
+
+Current local development posture:
+
+- Local web/backend can run today.
+- Local `.axon/state` persists connector tickets, connector configs, provider configs, and related durable fallback state.
+- PostgreSQL-backed production data is still required for multi-node/customer operation.
+- Runtime readiness should remain blocked or pilot-only until all runtime gates pass.
 
 Before external production use, verify:
 
@@ -641,6 +718,14 @@ Before external production use, verify:
 - Deployment adapters are configured for the target environment.
 - Live execution adapters are explicitly reviewed and approved.
 - Production Readiness status is `production-loop-ready`.
+
+Next build priorities:
+
+- Wire executed Playwright worker artifacts into Browser QA reports.
+- Connect deployment adapters for canary, health check, and rollback execution.
+- Move signing and provider secrets to KMS/secret manager backed storage.
+- Expand durable persistence from local state to PostgreSQL/object storage for multi-node use.
+- Continue activating each surface end to end with tests and live proof.
 
 Local readiness endpoints:
 

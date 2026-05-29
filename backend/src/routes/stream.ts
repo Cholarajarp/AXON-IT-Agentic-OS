@@ -3,6 +3,7 @@ import { scheduler } from '../orchestrator/scheduler.js';
 import { runtimeEnforcer } from '../agents/runtime-enforcer.js';
 import { toolRegistry } from '../tools/registry.js';
 import { connectorRegistry } from '../integrations/connector-registry.js';
+import type { ITSMTicket } from '../integrations/types.js';
 
 export async function registerStreamRoutes(app: FastifyInstance) {
   // SSE — stream execution events for a workflow
@@ -26,8 +27,10 @@ export async function registerStreamRoutes(app: FastifyInstance) {
       const dag = scheduler.getDAG(workflowId);
       const context = scheduler.getContext(workflowId);
       if (dag) {
+        const totalNodes = dag.nodes.length;
+        const completedNodes = dag.nodes.filter((n) => n.state === 'COMPLETE').length;
         sendEvent('dag.update', {
-          progress: dag.nodes.filter((n) => n.state === 'COMPLETE').length / dag.nodes.length * 100,
+          progress: totalNodes > 0 ? (completedNodes / totalNodes) * 100 : 100,
           nodes: dag.nodes.map((n) => ({ id: n.id, name: n.name, state: n.state, agent: n.agent })),
           cost: context?.costAccumulated || 0,
         });
@@ -89,10 +92,13 @@ export async function registerStreamRoutes(app: FastifyInstance) {
   // POST /integrations/configure — configure a connector
   app.post('/integrations/configure', async (req: FastifyRequest<{
     Body: { type: string; baseUrl: string; token?: string; enabled: boolean };
-  }>) => {
+  }>, reply) => {
     const { type, baseUrl, token, enabled } = req.body;
+    if (!connectorRegistry.isKnownType(type)) {
+      return reply.status(400).send({ message: `Unsupported integration type: ${type}` });
+    }
     const success = await connectorRegistry.configure({
-      type: type as any,
+      type,
       name: type,
       baseUrl,
       credentials: { type: 'token', token },
@@ -104,7 +110,8 @@ export async function registerStreamRoutes(app: FastifyInstance) {
 
   // GET /integrations/:type/tickets
   app.get('/integrations/:type/tickets', async (req: FastifyRequest<{ Params: { type: string } }>, reply) => {
-    const connector = connectorRegistry.get(req.params.type as any);
+    if (!connectorRegistry.isKnownType(req.params.type)) return reply.status(404).send({ message: 'Connector not found' });
+    const connector = connectorRegistry.get(req.params.type);
     if (!connector) return reply.status(404).send({ message: 'Connector not found' });
     const tickets = await connector.listTickets();
     return tickets;
@@ -115,9 +122,10 @@ export async function registerStreamRoutes(app: FastifyInstance) {
     Params: { type: string };
     Body: { title: string; description: string; priority?: string; type?: string };
   }>, reply) => {
-    const connector = connectorRegistry.get(req.params.type as any);
+    if (!connectorRegistry.isKnownType(req.params.type)) return reply.status(404).send({ message: 'Connector not found' });
+    const connector = connectorRegistry.get(req.params.type);
     if (!connector) return reply.status(404).send({ message: 'Connector not found' });
-    const ticket = await connector.createTicket(req.body as any);
+    const ticket = await connector.createTicket(req.body as Partial<ITSMTicket>);
     return reply.status(201).send(ticket);
   });
 }

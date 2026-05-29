@@ -1,7 +1,7 @@
 import type { AgentExecutionInput } from '../types.js';
-import { SimulatedAgent } from './base.js';
+import { DeterministicAgent } from './base.js';
 
-export class PMOAgent extends SimulatedAgent {
+export class PMOAgent extends DeterministicAgent {
   name = 'PMOAgent';
   description = 'Creates project plans, estimates effort, tracks progress';
   version = '1.0.0';
@@ -35,6 +35,6 @@ export class PMOAgent extends SimulatedAgent {
     };
   }
 
-  protected getSimulatedDurationMs() { return 1200 + Math.random() * 600; }
-  protected getSimulatedCost() { return 0.004 + Math.random() * 0.002; }
+  protected estimateDurationMs() { return 1500; }
+  protected estimateCost() { return 0.005; }
 }

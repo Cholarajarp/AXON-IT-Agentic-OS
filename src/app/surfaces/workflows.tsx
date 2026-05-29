@@ -4,10 +4,14 @@ import { Card, EmptyState, PageHeader, Button, StatusPill, Tabs, RightPanel } fr
 import { SubmitGoalModal } from "../components/submit-goal-modal";
 import { type Workflow } from "../lib/store";
 import { useWorkflows, useKillWorkflow } from "../lib/queries";
+import { useRouting } from "../lib/useRouting";
+import { useToast } from "../lib/toast";
 
 export function Workflows() {
   const { data: workflows = [], isLoading, isError, error, refetch } = useWorkflows();
   const killWorkflowMutation = useKillWorkflow();
+  const { setRoute } = useRouting();
+  const { toast } = useToast();
   const [tab, setTab] = useState("all");
   const [q, setQ] = useState("");
   const [goalOpen, setGoalOpen] = useState(false);
@@ -31,6 +35,15 @@ export function Workflows() {
 
   const killWorkflow = (id: string) => {
     killWorkflowMutation.mutate(id);
+  };
+
+  const exportWorkflows = async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify({ exportedAt: new Date().toISOString(), workflows: filtered }, null, 2));
+      toast({ kind: "success", title: "Workflows exported", description: `${filtered.length} workflow records copied to clipboard.` });
+    } catch {
+      toast({ kind: "error", title: "Export failed", description: "Clipboard access was blocked by the browser." });
+    }
   };
 
   if (isLoading) {
@@ -75,7 +88,7 @@ export function Workflows() {
         description="All goals, plans, and active execution lifecycles"
         action={
           <>
-            <Button variant="secondary" size="sm" icon={<Download size={13} />}>Export</Button>
+            <Button variant="secondary" size="sm" icon={<Download size={13} />} onClick={exportWorkflows}>Export</Button>
             <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => setGoalOpen(true)}>Submit Goal</Button>
           </>
         }
@@ -106,7 +119,7 @@ export function Workflows() {
               className="bg-transparent flex-1 min-w-0 outline-none text-s-primary placeholder:text-s-muted text-[12.5px]"
             />
           </div>
-          <Button variant="ghost" size="sm" icon={<Filter size={13} />}>Filters</Button>
+          <Button variant="ghost" size="sm" icon={<Filter size={13} />} onClick={() => { setQ(""); setTab("all"); }}>Clear</Button>
         </div>
 
         {filtered.length === 0 ? (
@@ -222,8 +235,8 @@ export function Workflows() {
               <div className="text-s-primary text-[13px]">{selected.step}</div>
             </div>
             <div className="flex gap-2 pt-3 border-t border-s-border">
-              <Button variant="secondary" size="sm">View DAG</Button>
-              <Button variant="secondary" size="sm">Audit Log</Button>
+              <Button variant="secondary" size="sm" onClick={() => setRoute("dag")}>View DAG</Button>
+              <Button variant="secondary" size="sm" onClick={() => setRoute("audit")}>Audit Log</Button>
               <Button variant="danger" size="sm" onClick={() => { killWorkflow(selected.id); setSelected(null); }}>
                 Kill Workflow
               </Button>

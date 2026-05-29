@@ -139,9 +139,12 @@ const STEPS: RuntimeStep[] = [
     name: 'execution',
     order: 9,
     async execute(ctx) {
-      // Actual execution happens here — handled by scheduler
-      // This step is a placeholder in the enforcer pipeline
-      ctx.metadata.executionPhase = true;
+      ctx.metadata.executionPhase = {
+        delegatedTo: 'scheduler',
+        workflowId: ctx.workflowId,
+        taskId: ctx.taskId,
+        agentName: ctx.agentName,
+      };
       return ctx;
     },
   },

@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import {
+  Award,
   Bot,
   Building2,
   CheckCircle2,
@@ -7,11 +8,14 @@ import {
   CloudCog,
   Coins,
   Database,
+  Gauge,
   Loader2,
   Network,
   RefreshCw,
+  Rocket,
   ShieldCheck,
   Sparkles,
+  Trophy,
 } from 'lucide-react';
 import {
   Button,
@@ -23,12 +27,18 @@ import {
 } from '../components/ui/primitives';
 import {
   useCreateManagedServiceAccount,
+  useCreateManagedServiceTransformationRun,
   useManagedServiceAccounts,
+  useManagedServiceITGiantReadiness,
+  useManagedServiceTransformationRuns,
+  type ITGiantReadinessReport,
   type ManagedServiceAccount,
   type ManagedServiceCoverage,
+  type ManagedServiceTransformationRun,
   type ManagedServiceTower,
 } from '../lib/queries';
 import { useRouting } from '../lib/useRouting';
+import { useToast } from '../lib/toast';
 
 function parseList(value: string) {
   return value.split(',').map((item) => item.trim()).filter(Boolean);
@@ -37,7 +47,9 @@ function parseList(value: string) {
 export function ManagedServices() {
   const accounts = useManagedServiceAccounts();
   const createAccount = useCreateManagedServiceAccount();
+  const createTransformation = useCreateManagedServiceTransformationRun();
   const { setRoute } = useRouting();
+  const { toast } = useToast();
   const [customerName, setCustomerName] = useState('');
   const [industry, setIndustry] = useState('');
   const [objective, setObjective] = useState('');
@@ -50,6 +62,9 @@ export function ManagedServices() {
 
   const list = accounts.data?.accounts ?? [];
   const current = selected ?? list[0] ?? null;
+  const readiness = useManagedServiceITGiantReadiness(current?.id);
+  const transformationRuns = useManagedServiceTransformationRuns();
+  const latestTransformation = transformationRuns.data?.runs.find((run) => !current?.id || run.accountId === current.id) ?? transformationRuns.data?.runs[0] ?? null;
   const totalTowers = current?.serviceTowers.length ?? 0;
   const monthly = current ? `$${Math.round(current.financials.monthlyRunCostUsd / 1000)}k` : '$0';
   const assets = current?.cmdbSeed.length ?? 0;
@@ -67,6 +82,19 @@ export function ManagedServices() {
       coverage,
     });
     setSelected(account);
+  };
+
+  const runTransformation = async () => {
+    try {
+      const run = await createTransformation.mutateAsync({
+        accountId: current?.id,
+        maxMissions: 3,
+        tactic: 'Close IT giant service gaps with mission-backed managed-service offers, signed proof, and commercial value metrics.',
+      });
+      toast({ kind: 'success', title: 'Transformation sprint created', description: `${run.missionControlRuns.length} Mission Control runs created.` });
+    } catch (error) {
+      toast({ kind: 'error', title: 'Transformation sprint failed', description: error instanceof Error ? error.message : 'Unable to create sprint.' });
+    }
   };
 
   return (
@@ -98,6 +126,14 @@ export function ManagedServices() {
         <Kpi label="Automations" value={String(automations)} hint="AI/runbook candidates" />
         <Kpi label="Monthly run" value={monthly} hint="Estimated managed service" />
       </div>
+
+      <ITGiantReadinessPanel
+        report={readiness.data ?? null}
+        run={latestTransformation}
+        busy={createTransformation.isPending}
+        onRunTransformation={runTransformation}
+        onOpenMissions={() => setRoute('missionControl')}
+      />
 
       <div className="grid grid-cols-1 xl:grid-cols-[420px_minmax(0,1fr)] gap-4">
         <Card className="overflow-hidden">
@@ -153,6 +189,200 @@ export function ManagedServices() {
       </div>
 
       <AccountDetail account={current} />
+    </div>
+  );
+}
+
+function ITGiantReadinessPanel({
+  report,
+  run,
+  busy,
+  onRunTransformation,
+  onOpenMissions,
+}: {
+  report: ITGiantReadinessReport | null;
+  run: ManagedServiceTransformationRun | null;
+  busy: boolean;
+  onRunTransformation: () => void;
+  onOpenMissions: () => void;
+}) {
+  const topCapabilities = report?.capabilities.slice(0, 5) ?? [];
+  const topGaps = report?.serviceGaps.slice(0, 4) ?? [];
+
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader
+        title="IT giant readiness"
+        subtitle={report ? `${report.status.replace('-', ' ')} · benchmarked against TCS, Accenture, Infosys, Wipro, HCLTech, Cognizant, Capgemini` : 'Loading service benchmark'}
+        action={
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" icon={<Rocket size={13} />} onClick={onOpenMissions}>
+              Missions
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              icon={busy ? <Loader2 size={13} className="animate-spin" /> : <Trophy size={13} />}
+              onClick={onRunTransformation}
+              disabled={busy || !report}
+            >
+              {busy ? 'Creating' : 'Run service sprint'}
+            </Button>
+          </div>
+        }
+      />
+      {report ? (
+        <div className="p-4 space-y-4">
+          <div className="grid grid-cols-1 xl:grid-cols-[210px_minmax(0,1fr)] gap-4">
+            <div className="rounded-md border border-s-border bg-s-base p-4">
+              <div className="label-mono mb-2">AXON challenger score</div>
+              <div className="flex items-end gap-2">
+                <div className="font-mono text-[34px] leading-none text-s-primary">{report.score}%</div>
+                <Gauge size={18} className="mb-1 text-s-brand" />
+              </div>
+              <div className="mt-2 h-2 rounded-full bg-s-subtle overflow-hidden">
+                <div className="h-full rounded-full bg-s-brand" style={{ width: `${report.score}%` }} />
+              </div>
+              <div className="mt-2 text-[11.5px] leading-relaxed text-s-secondary">Target: 92%+ for giant-grade managed service credibility.</div>
+            </div>
+            <div className="rounded-md border border-s-brand/30 bg-s-brand/10 p-4 text-[12.5px] leading-relaxed text-s-primary">
+              {report.thesis}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_410px] gap-4">
+            <div className="rounded-md border border-s-border bg-s-base overflow-hidden">
+              <div className="border-b border-s-border px-3 py-2 label-mono">Service-line gap board</div>
+              <div className="divide-y divide-s-border">
+                {topCapabilities.map((capability) => (
+                  <div key={capability.id} className="p-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-s-primary">{capability.title}</span>
+                      <span className="font-mono text-[11px] text-s-muted">{capability.score}/{capability.targetScore}</span>
+                    </div>
+                    <div className="mt-2 h-1.5 rounded-full bg-s-subtle overflow-hidden">
+                      <div className="h-full rounded-full bg-s-brand" style={{ width: `${capability.score}%` }} />
+                    </div>
+                    <div className="mt-2 text-[12px] leading-relaxed text-s-secondary">{capability.improvementMove}</div>
+                    <div className="mt-2 flex flex-wrap gap-1.5">{capability.requiredTowerCategories.map((tower) => <Token key={tower}>{tower}</Token>)}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-md border border-s-border bg-s-base overflow-hidden">
+              <div className="border-b border-s-border px-3 py-2 label-mono">Missing or weak service lanes</div>
+              <div className="divide-y divide-s-border">
+                {topGaps.map((gap) => (
+                  <div key={gap.id} className="p-3">
+                    <div className="flex items-center gap-2">
+                      <Token>{gap.severity}</Token>
+                      <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-s-primary">{gap.ownerTower}</span>
+                    </div>
+                    <div className="mt-2 text-[12px] leading-relaxed text-s-secondary">{gap.fix}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_410px] gap-4">
+            <div className="rounded-md border border-s-border bg-s-base overflow-hidden">
+              <div className="border-b border-s-border px-3 py-2 label-mono">Competitor counter-position</div>
+              <div className="divide-y divide-s-border">
+                {report.competitors.slice(0, 5).map((competitor) => (
+                  <div key={competitor.id} className="p-3">
+                    <div className="flex items-center gap-2">
+                      <Award size={13} className="text-s-brand" />
+                      <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-s-primary">{competitor.name}</span>
+                    </div>
+                    <div className="mt-2 grid grid-cols-1 lg:grid-cols-3 gap-2">
+                      <CounterBox title="Their edge">{competitor.currentEdge}</CounterBox>
+                      <CounterBox title="Their gap">{competitor.weakSpot}</CounterBox>
+                      <CounterBox title="AXON counter">{competitor.axonCounter}</CounterBox>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <TransformationRunPanel run={run} />
+          </div>
+        </div>
+      ) : (
+        <EmptyState icon={<Trophy size={18} />} title="Loading IT giant benchmark" />
+      )}
+    </Card>
+  );
+}
+
+function TransformationRunPanel({ run }: { run: ManagedServiceTransformationRun | null }) {
+  if (!run) {
+    return (
+      <div className="rounded-md border border-s-border bg-s-base overflow-hidden">
+        <div className="border-b border-s-border px-3 py-2 label-mono">Latest transformation sprint</div>
+        <EmptyState icon={<Rocket size={18} />} title="No service sprint yet" description="Create a sprint to turn weak service lanes into Mission Control work, proof artifacts, and commercial packaging." />
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-md border border-s-border bg-s-base overflow-hidden">
+      <div className="border-b border-s-border px-3 py-2 label-mono">Latest transformation sprint</div>
+      <div className="p-3 space-y-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <Token>{run.status}</Token>
+          <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-s-primary">{run.id}</span>
+          <span className="font-mono text-[11px] text-s-muted">{run.progress.score}%</span>
+        </div>
+        <div className="rounded-md border border-s-border bg-s-subtle p-2">
+          <div className="flex items-center justify-between text-[11.5px]">
+            <span className="text-s-secondary">Stage gates</span>
+            <span className="font-mono text-s-primary">{run.progress.completedGates}/{run.progress.totalGates}</span>
+          </div>
+          <div className="mt-2 h-1.5 rounded-full bg-s-base overflow-hidden">
+            <div className="h-full rounded-full bg-s-brand" style={{ width: `${run.progress.score}%` }} />
+          </div>
+        </div>
+        <div className="rounded-md border border-s-brand/30 bg-s-brand/10 p-2">
+          <div className="text-[12px] font-medium text-s-primary">{run.commercialPack.offerName}</div>
+          <div className="mt-1 text-[11.5px] leading-relaxed text-s-secondary">{run.commercialPack.buyerPromise}</div>
+        </div>
+        <div className="space-y-2">
+          {run.missionControlRuns.map((mission) => (
+            <div key={mission.missionControlRunId} className="rounded-md border border-s-border bg-s-subtle p-2">
+              <div className="flex items-center gap-2">
+                <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-s-primary">{mission.capabilityTitle}</span>
+                <span className="font-mono text-[10px] text-s-muted">{mission.score}</span>
+              </div>
+              <div className="mt-1 font-mono text-[10px] text-s-muted">{mission.missionControlRunId}</div>
+            </div>
+          ))}
+        </div>
+        <div>
+          <div className="label-mono mb-2">Proof artifacts</div>
+          <div className="space-y-1.5">
+            {run.proofArtifacts.map((artifact) => (
+              <div key={artifact.id} className="rounded-md border border-s-border bg-s-subtle p-2">
+                <div className="flex items-center gap-2">
+                  <Token>{artifact.kind}</Token>
+                  <span className="min-w-0 flex-1 truncate text-[11.5px] text-s-primary">{artifact.name}</span>
+                </div>
+                <div className="mt-1 truncate font-mono text-[9.5px] text-s-muted">{artifact.sha256}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CounterBox({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="rounded-md border border-s-border bg-s-subtle p-2">
+      <div className="label-mono mb-1">{title}</div>
+      <div className="text-[11.5px] leading-relaxed text-s-secondary">{children}</div>
     </div>
   );
 }

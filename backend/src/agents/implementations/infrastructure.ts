@@ -1,7 +1,7 @@
 import type { AgentExecutionInput } from '../types.js';
-import { SimulatedAgent } from './base.js';
+import { DeterministicAgent } from './base.js';
 
-export class InfrastructureAgent extends SimulatedAgent {
+export class InfrastructureAgent extends DeterministicAgent {
   name = 'InfrastructureAgent';
   description = 'Provisions infrastructure, deploys services, configures systems';
   version = '1.0.0';
@@ -24,6 +24,6 @@ export class InfrastructureAgent extends SimulatedAgent {
     };
   }
 
-  protected getSimulatedDurationMs() { return 4000 + Math.random() * 2000; }
-  protected getSimulatedCost() { return 0.004 + Math.random() * 0.002; }
+  protected estimateDurationMs() { return 5000; }
+  protected estimateCost() { return 0.005; }
 }

@@ -1,18 +1,18 @@
 import type { BaseAgent, AgentExecutionInput, AgentExecutionResult } from '../types.js';
 
-export abstract class SimulatedAgent implements BaseAgent {
+export abstract class DeterministicAgent implements BaseAgent {
   abstract name: string;
   abstract description: string;
   abstract version: string;
   abstract capabilities: string[];
 
   protected abstract generateOutput(input: AgentExecutionInput): Record<string, unknown>;
-  protected abstract getSimulatedDurationMs(): number;
-  protected abstract getSimulatedCost(): number;
+  protected abstract estimateCost(): number;
 
   async execute(input: AgentExecutionInput): Promise<AgentExecutionResult> {
-    const duration = this.getSimulatedDurationMs();
-    await this.simulateWork(duration, input.signal);
+    if (input.signal.aborted) {
+      throw new DOMException('Aborted', 'AbortError');
+    }
 
     const output = {
       ...this.generateOutput(input),
@@ -27,22 +27,19 @@ export abstract class SimulatedAgent implements BaseAgent {
           }
         : {}),
     };
-    const cost = this.getSimulatedCost();
+    const cost = this.estimateCost();
 
     return { output, cost };
   }
 
-  private simulateWork(ms: number, signal: AbortSignal): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (signal.aborted) {
-        reject(new DOMException('Aborted', 'AbortError'));
-        return;
-      }
-      const timeout = setTimeout(resolve, ms);
-      signal.addEventListener('abort', () => {
-        clearTimeout(timeout);
-        reject(new DOMException('Aborted', 'AbortError'));
-      }, { once: true });
-    });
+  protected deterministicRange(input: AgentExecutionInput, salt: string, min: number, max: number): number {
+    const source = `${this.name}:${input.workflowId}:${input.taskId}:${input.taskName}:${input.description}:${salt}`;
+    let hash = 2166136261;
+    for (let i = 0; i < source.length; i += 1) {
+      hash ^= source.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+    const ratio = (hash >>> 0) / 0xffffffff;
+    return Math.round(min + ratio * (max - min));
   }
 }

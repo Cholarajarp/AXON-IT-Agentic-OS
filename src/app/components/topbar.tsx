@@ -147,7 +147,7 @@ export function TopBar({ onOpenPalette, onOpenHelp }: { onOpenPalette: () => voi
   };
 
   return (
-    <header ref={topbarRef} className="sticky top-0 h-[52px] shrink-0 bg-s-surface/95 backdrop-blur-xl border-b border-s-border shadow-[0_1px_0_rgba(255,255,255,0.03)] flex items-center px-4 gap-2 min-w-0 z-20">
+    <header ref={topbarRef} className="sticky top-0 h-[52px] shrink-0 bg-s-surface/95 backdrop-blur-xl border-b border-s-border flex items-center px-4 gap-2 min-w-0 z-20">
       <div className="flex items-center gap-1.5 min-w-0 text-[12.5px]">
         <button onClick={() => setRoute("build")} className="shrink-0 text-s-muted hover:text-s-primary">
           Axon
@@ -178,7 +178,7 @@ export function TopBar({ onOpenPalette, onOpenHelp }: { onOpenPalette: () => voi
             <ChevronDown size={11} className="text-s-muted shrink-0" />
           </button>
           {projOpen && (
-            <div className="absolute right-0 top-full mt-2 w-72 bg-s-elevated border border-s-border rounded-md shadow-2xl py-1 z-50">
+            <div className="absolute right-0 top-full mt-2 w-72 bg-s-elevated border border-s-border rounded-md py-1 z-50">
               <div className="px-3 py-2 flex items-center justify-between border-b border-s-border">
                 <span className="label-mono">Workspace</span>
                 <button onClick={() => setProjOpen(false)} className="rounded p-1 text-s-muted hover:bg-s-hover hover:text-s-primary" aria-label="Close workspace menu">
@@ -266,7 +266,7 @@ export function TopBar({ onOpenPalette, onOpenHelp }: { onOpenPalette: () => voi
             )}
           </button>
           {notifOpen && (
-            <div className="absolute right-0 top-full mt-2 w-80 bg-s-elevated border border-s-border rounded-md shadow-2xl z-50 overflow-hidden">
+            <div className="absolute right-0 top-full mt-2 w-80 bg-s-elevated border border-s-border rounded-md z-50 overflow-hidden">
               <div className="px-4 py-3 border-b border-s-border flex items-center justify-between">
                 <div>
                   <span className="text-s-primary text-[13px] font-medium">Notifications</span>
@@ -325,15 +325,15 @@ export function TopBar({ onOpenPalette, onOpenHelp }: { onOpenPalette: () => voi
             onClick={() => { closeAll(); setMenuOpen((v) => !v); }}
             className="flex items-center gap-1 pl-1 pr-1.5 py-1 rounded-md hover:bg-s-hover"
           >
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-s-info to-s-brand flex items-center justify-center text-white text-[11px] font-semibold shrink-0">
+            <div className="w-7 h-7 rounded-full bg-s-info flex items-center justify-center text-white text-[11px] font-semibold shrink-0">
               {avatarInitial}
             </div>
             <ChevronDown size={11} className="text-s-muted shrink-0" />
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-full mt-2 w-56 bg-s-elevated border border-s-border rounded-md shadow-2xl py-1 z-50">
+            <div className="absolute right-0 top-full mt-2 w-56 bg-s-elevated border border-s-border rounded-md py-1 z-50">
               <div className="px-3 py-2.5 border-b border-s-border flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-s-info to-s-brand flex items-center justify-center text-white text-[11px] font-semibold shrink-0">
+                <div className="w-8 h-8 rounded-full bg-s-info flex items-center justify-center text-white text-[11px] font-semibold shrink-0">
                   {avatarInitial}
                 </div>
                 <div className="min-w-0 flex-1">
